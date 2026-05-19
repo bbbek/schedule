@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Трекер</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f0efe9;--bg2:#fff;--bg3:#f5f4f0;--text:#1a1a1a;--text2:#555;--text3:#999;--text4:#bbb;
+  --border:#f2f1ed;--border2:#e8e6e0;--green:#18a06b;--greenl:#e0f5ed;--greend:#095c36;
+  --red:#c94040;--redl:#ffeaea;--orange:#e07d1a;--orangel:#fff4e0;--oranged:#8c5000;
+  --purple:#6b5fd4;--purplel:#eeecff;--purpled:#3d2fa0;
+  --card:#fff;--input-bg:#f5f4f0;--input-border:#e0deda;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1a1a1a;--bg2:#2a2a2a;--bg3:#222;--text:#f0f0f0;--text2:#ccc;--text3:#888;--text4:#555;
+  --border:#333;--border2:#3a3a3a;--greenl:#0a2a1a;--greend:#4dd890;
+  --redl:#2a0a0a;--orangel:#2e2000;--oranged:#f0a830;--purplel:#1a1040;--purped:#a090ff;
+  --card:#2a2a2a;--input-bg:#222;--input-border:#444;
+}}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);padding:16px;max-width:520px;margin:0 auto;}
+
+/* TABS */
+.tabs{display:flex;gap:7px;margin:16px 0 20px;}
+.tab{flex:1;padding:10px 4px;border-radius:12px;border:none;font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;text-align:center;cursor:pointer;transition:all .18s;}
+.tab.on{background:var(--text);color:var(--bg);}
+.tab.off{background:var(--card);color:var(--text3);}
+.view{display:none;}.view.on{display:block;}
+
+.page-title{font-size:22px;font-weight:700;margin-bottom:3px;}
+.page-sub{font-size:13px;color:var(--text3);margin-bottom:20px;}
+
+/* CARDS */
+.card{background:var(--card);border-radius:15px;padding:14px 15px;margin-bottom:9px;}
+.card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;}
+.card-sub{font-size:12px;color:var(--text3);margin-bottom:12px;}
+
+/* INPUTS */
+input,textarea,select{font-family:'Manrope',sans-serif;font-size:13px;background:var(--input-bg);border:1.5px solid var(--input-border);border-radius:10px;color:var(--text);padding:9px 12px;width:100%;outline:none;transition:border .15s;}
+input:focus,textarea:focus,select:focus{border-color:var(--green);}
+textarea{resize:none;min-height:60px;}
+select{appearance:none;}
+
+/* BUTTONS */
+.btn{width:100%;padding:13px;border-radius:13px;border:none;font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .18s;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:active{opacity:.85;}
+.btn-gray{background:var(--card);border:1.5px solid var(--border2);color:var(--text3);}
+.btn-red{background:var(--redl);color:var(--red);border:none;}
+.btn-sm{padding:7px 14px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:'Manrope',sans-serif;}
+.btn-sm-green{background:var(--greenl);color:var(--greend);}
+.btn-sm-red{background:var(--redl);color:var(--red);}
+.btn-sm-gray{background:var(--bg3);color:var(--text2);}
+
+/* EXERCISE CARD */
+.ex-card{background:var(--bg3);border-radius:13px;padding:12px 14px;margin-bottom:8px;position:relative;}
+.ex-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.sets-list{margin-bottom:8px;}
+.set-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.set-num{font-size:11px;font-weight:700;color:var(--text3);width:24px;flex-shrink:0;}
+.set-input{flex:1;padding:7px 10px;font-size:13px;}
+.set-del{background:none;border:none;color:var(--text4);font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;}
+.set-del:active{color:var(--red);}
+.ex-actions{display:flex;gap:7px;flex-wrap:wrap;}
+.ex-del-btn{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text4);font-size:18px;cursor:pointer;}
+.ex-del-btn:active{color:var(--red);}
+.ex-note{margin-top:8px;}
+
+/* WORKOUT HISTORY */
+.hist-item{background:var(--card);border-radius:13px;padding:12px 14px;margin-bottom:8px;cursor:pointer;}
+.hist-date{font-size:12px;color:var(--text3);margin-bottom:3px;}
+.hist-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.hist-stats{display:flex;gap:10px;flex-wrap:wrap;}
+.hist-stat{font-size:12px;color:var(--text2);background:var(--bg3);padding:3px 9px;border-radius:20px;}
+.hist-detail{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+.hist-ex{margin-bottom:8px;}
+.hist-ex-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.hist-set{font-size:12px;color:var(--text2);margin-bottom:2px;}
+
+/* PROGRESS CHART */
+.chart-wrap{margin-top:8px;overflow-x:auto;}
+.chart-inner{display:flex;align-items:flex-end;gap:6px;min-height:80px;padding-bottom:4px;}
+.chart-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:36px;}
+.chart-bar{width:28px;border-radius:6px 6px 0 0;background:var(--green);min-height:4px;transition:height .3s;}
+.chart-val{font-size:9px;color:var(--text3);font-weight:600;}
+.chart-label{font-size:9px;color:var(--text3);text-align:center;max-width:36px;word-break:break-all;}
+
+/* CALORIE */
+.upload-area{border:2px dashed var(--border2);border-radius:13px;padding:24px;text-align:center;cursor:pointer;margin-bottom:12px;transition:border .2s;}
+.upload-area:active{border-color:var(--green);}
+.upload-icon{font-size:36px;margin-bottom:8px;}
+.upload-text{font-size:13px;color:var(--text3);}
+#photo-preview{width:100%;border-radius:13px;margin-bottom:12px;display:none;}
+.cal-result{background:var(--greenl);border-radius:13px;padding:14px;margin-bottom:9px;display:none;}
+.cal-result-title{font-size:13px;font-weight:700;color:var(--greend);margin-bottom:8px;}
+.cal-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid rgba(0,0,0,.06);}
+.cal-row:first-child{border-top:none;}
+.cal-food{font-size:13px;color:var(--text);}
+.cal-kcal{font-size:13px;font-weight:700;color:var(--green);}
+.cal-total{font-size:15px;font-weight:700;color:var(--greend);margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.1);display:flex;justify-content:space-between;}
+.loading{text-align:center;padding:20px;color:var(--text3);font-size:13px;display:none;}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* MACRO BAR */
+.macro-bar{display:flex;gap:6px;margin-bottom:9px;}
+.mc{flex:1;background:var(--card);border-radius:12px;padding:9px 8px;text-align:center;}
+.mv{font-size:16px;font-weight:700;color:var(--text);}
+.ml{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-top:1px;}
+
+/* BADGE */
+.badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;}
+.bg{background:var(--bg3);color:var(--text2);}
+.note{background:var(--bg3);border-radius:12px;padding:10px 13px;font-size:12px;color:var(--text3);margin-bottom:9px;line-height:1.5;}
+.warn{background:var(--orangel);border-radius:12px;padding:10px 13px;font-size:12px;color:var(--oranged);margin-bottom:9px;}
+.divider{border:none;border-top:1.5px solid var(--border2);margin:18px 0;}
+.empty-state{text-align:center;padding:30px 20px;color:var(--text3);font-size:13px;line-height:1.6;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+label{font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:5px;}
+.form-group{margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<div class="page-title">Трекер</div>
+<p class="page-sub">Тренировки · Калории · Прогресс</p>
+
+<div class="tabs">
+  <button class="tab on" onclick="swTab('gym',this)">Зал</button>
+  <button class="tab off" onclick="swTab('history',this)">История</button>
+  <button class="tab off" onclick="swTab('progress',this)">Прогресс</button>
+  <button class="tab off" onclick="swTab('calories',this)">Калории</button>
+</div>
+
+<!-- ==================== ЗАЛ ==================== -->
+<div class="view on" id="v-gym">
+
+  <div class="card">
+    <div class="card-title">Сегодняшняя тренировка</div>
+    <div class="form-group">
+      <label>Название (необязательно)</label>
+      <input type="text" id="workout-name" placeholder="Фулбоди, день 1...">
+    </div>
+    <div class="form-group">
+      <label>Дата</label>
+      <input type="date" id="workout-date">
+    </div>
+  </div>
+
+  <div id="exercises-list"></div>
+
+  <!-- ADD EXERCISE -->
+  <div class="card" id="add-ex-card">
+    <div class="card-title">Добавить упражнение</div>
+    <div class="form-group">
+      <label>Упражнение</label>
+      <select id="ex-select" onchange="onExSelect()">
+        <option value="">Выбрать из списка...</option>
+        <optgroup label="Грудь">
+          <option>Жим штанги лёжа</option>
+          <option>Жим гантелей лёжа</option>
+          <option>Жим в тренажёре</option>
+          <option>Разводка гантелей</option>
+          <option>Отжимания на брусьях</option>
+        </optgroup>
+        <optgroup label="Спина">
+          <option>Становая тяга</option>
+          <option>Тяга штанги в наклоне</option>
+          <option>Тяга гантели в наклоне</option>
+          <option>Подтягивания</option>
+          <option>Тяга верхнего блока</option>
+          <option>Тяга нижнего блока</option>
+        </optgroup>
+        <optgroup label="Ноги">
+          <option>Приседания со штангой</option>
+          <option>Жим ногами</option>
+          <option>Выпады</option>
+          <option>Румынская тяга</option>
+          <option>Сгибания ног</option>
+          <option>Разгибания ног</option>
+          <option>Подъёмы на носки</option>
+        </optgroup>
+        <optgroup label="Плечи">
+          <option>Жим штанги стоя</option>
+          <option>Жим гантелей сидя</option>
+          <option>Тяга штанги к подбородку</option>
+          <option>Махи гантелями в стороны</option>
+          <option>Махи в наклоне</option>
+        </optgroup>
+        <optgroup label="Руки">
+          <option>Подъём штанги на бицепс</option>
+          <option>Молотки с гантелями</option>
+          <option>Французский жим</option>
+          <option>Разгибания на блоке</option>
+          <option>Отжимания на брусьях (трицепс)</option>
+        </optgroup>
+        <optgroup label="Другое">
+          <option>Планка</option>
+          <option>Скручивания</option>
+          <option>Гиперэкстензия</option>
+          <option value="custom">✏️ Своё упражнение...</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="form-group" id="custom-ex-wrap" style="display:none;">
+      <label>Название упражнения</label>
+      <input type="text" id="custom-ex-name" placeholder="Введи название...">
+    </div>
+    <button class="btn btn-green" onclick="addExercise()">Добавить упражнение</button>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:4px;">
+    <button class="btn btn-gray" style="flex:1;" onclick="clearWorkout()">Очистить</button>
+    <button class="btn btn-green" style="flex:2;" onclick="saveWorkout()">Сохранить тренировку</button>
+  </div>
+  <div style="height:16px;"></div>
+</div>
+
+<!-- ==================== ИСТОРИЯ ==================== -->
+<div class="view" id="v-history">
+  <div id="history-list"></div>
+  <div style="height:16px;"></div>
+</div>
+
+<!-- ==================== ПРОГРЕСС ==================== -->
+<div class="view" id="v-progress">
+  <div class="card">
+    <div class="card-title">Прогресс по упражнению</div>
+    <div class="form-group">
+      <label>Выбери упражнение</label>
+      <select id="progress-ex-select" onchange="renderProgress()">
+        <option value="">Выбери упражнение...</option>
+      </select>
+    </div>
+  </div>
+  <div id="progress-content"></div>
+  <div style="height:16px;"></div>
+</div>
+
+<!-- ==================== КАЛОРИИ ==================== -->
+<div class="view" id="v-calories">
+
+  <div class="macro-bar">
+    <div class="mc"><div class="mv" id="cal-today-kcal">0</div><div class="ml">Ккал сегодня</div></div>
+    <div class="mc"><div class="mv" id="cal-today-prot">0г</div><div class="ml">Белок</div></div>
+    <div class="mc"><div class="mv" id="cal-today-carb">0г</div><div class="ml">Углеводы</div></div>
+    <div class="mc"><div class="mv" id="cal-today-fat">0г</div><div class="ml">Жиры</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Посчитать калории по фото</div>
+    <div class="card-sub">Сфотографируй еду — AI определит калории и БЖУ</div>
+
+    <div class="upload-area" onclick="document.getElementById('photo-input').click()">
+      <div class="upload-icon">📷</div>
+      <div class="upload-text">Нажми чтобы сфотографировать или выбрать фото</div>
+    </div>
+    <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none;" onchange="onPhotoSelected(event)">
+
+    <img id="photo-preview">
+
+    <div class="loading" id="cal-loading">
+      <div class="spinner"></div>
+      <div>AI анализирует фото...</div>
+    </div>
+
+    <div class="cal-result" id="cal-result">
+      <div class="cal-result-title">Результат анализа</div>
+      <div id="cal-result-rows"></div>
+      <div class="cal-total">
+        <span>Итого</span>
+        <span id="cal-result-total">0 ккал</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-green" style="flex:1;" onclick="addToDay()">Добавить в дневник</button>
+        <button class="btn btn-gray" style="flex:1;" onclick="resetPhoto()">Новое фото</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Дневник питания — сегодня</div>
+    <div id="food-log-list"></div>
+    <div id="food-log-empty" class="empty-state">Нет записей.<br>Сфотографируй еду чтобы добавить.</div>
+  </div>
+
+  <div style="height:16px;"></div>
+</div>
+
+<script>
+// ── Telegram ──
+if(window.Telegram&&window.Telegram.WebApp){window.Telegram.WebApp.ready();window.Telegram.WebApp.expand();}
+
+// ── Storage ──
+function gs(){try{return JSON.parse(localStorage.getItem('tracker_data')||'{}')}catch(e){return{}}}
+function ss(d){try{localStorage.setItem('tracker_data',JSON.stringify(d))}catch(e){}}
+
+// ── Tabs ──
+function swTab(id,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(b=>{b.classList.remove('on');b.classList.add('off');});
+  document.getElementById('v-'+id).classList.add('on');
+  btn.classList.add('on');btn.classList.remove('off');
+  if(id==='history')renderHistory();
+  if(id==='progress')renderProgressSelect();
+  if(id==='calories')renderFoodLog();
+}
+
+// ── DATE ──
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function fmtDate(s){
+  const d=new Date(s+'T00:00:00');
+  const days=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const months=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  return days[d.getDay()]+', '+d.getDate()+' '+months[d.getMonth()];
+}
+
+// ── Init date ──
+document.getElementById('workout-date').value = todayStr();
+
+// ── Exercise select ──
+function onExSelect(){
+  const v=document.getElementById('ex-select').value;
+  document.getElementById('custom-ex-wrap').style.display=(v==='custom')?'block':'none';
+}
+
+// ── Add exercise ──
+let exercises=[];
+
+function addExercise(){
+  let name=document.getElementById('ex-select').value;
+  if(name==='custom') name=document.getElementById('custom-ex-name').value.trim();
+  if(!name){alert('Выбери или введи упражнение');return;}
+  exercises.push({name,sets:[{w:'',r:'',s:''}]});
+  renderExercises();
+  document.getElementById('ex-select').value='';
+  document.getElementById('custom-ex-wrap').style.display='none';
+  document.getElementById('custom-ex-name').value='';
+}
+
+function renderExercises(){
+  const el=document.getElementById('exercises-list');
+  if(exercises.length===0){el.innerHTML='';return;}
+  el.innerHTML=exercises.map((ex,ei)=>`
+    <div class="ex-card">
+      <button class="ex-del-btn" onclick="delEx(${ei})">×</button>
+      <div class="ex-name">${ex.name}</div>
+      <div class="sets-list" id="sets-${ei}">
+        ${ex.sets.map((s,si)=>`
+          <div class="set-row">
+            <div class="set-num">${si+1}</div>
+            <input class="set-input" type="number" placeholder="кг" value="${s.w}" oninput="updSet(${ei},${si},'w',this.value)" inputmode="decimal">
+            <input class="set-input" type="number" placeholder="повт" value="${s.r}" oninput="updSet(${ei},${si},'r',this.value)" inputmode="numeric">
+            <input class="set-input" type="number" placeholder="подх" value="${s.s}" oninput="updSet(${ei},${si},'s',this.value)" inputmode="numeric">
+            <button class="set-del" onclick="delSet(${ei},${si})">×</button>
+          </div>
+        `).join('')}
+      </div>
+      <div class="ex-actions">
+        <button class="btn-sm btn-sm-green" onclick="addSet(${ei})">+ Подход</button>
+        <button class="btn-sm btn-sm-gray" onclick="copyLastSet(${ei})">Копировать последний</button>
+      </div>
+      <div class="ex-note">
+        <input type="text" placeholder="Заметка к упражнению..." value="${ex.note||''}" oninput="updNote(${ei},this.value)" style="font-size:12px;padding:6px 10px;">
+      </div>
+    </div>
+  `).join('');
+}
+
+function updSet(ei,si,field,val){exercises[ei].sets[si][field]=val;}
+function updNote(ei,val){exercises[ei].note=val;}
+function delSet(ei,si){if(exercises[ei].sets.length>1)exercises[ei].sets.splice(si,1);renderExercises();}
+function addSet(ei){exercises[ei].sets.push({w:'',r:'',s:''});renderExercises();}
+function copyLastSet(ei){
+  const sets=exercises[ei].sets;
+  if(sets.length>0){const last=sets[sets.length-1];exercises[ei].sets.push({...last});}
+  renderExercises();
+}
+function delEx(ei){exercises.splice(ei,1);renderExercises();}
+
+function clearWorkout(){
+  if(exercises.length>0&&!confirm('Очистить тренировку?'))return;
+  exercises=[];renderExercises();
+  document.getElementById('workout-name').value='';
+  document.getElementById('workout-date').value=todayStr();
+}
+
+function saveWorkout(){
+  if(exercises.length===0){alert('Добавь хотя бы одно упражнение');return;}
+  const data=gs();
+  if(!data.workouts)data.workouts=[];
+  const w={
+    id:Date.now(),
+    date:document.getElementById('workout-date').value||todayStr(),
+    name:document.getElementById('workout-name').value||'Фулбоди',
+    exercises:exercises.map(ex=>({...ex,sets:ex.sets.filter(s=>s.w||s.r||s.s)}))
+  };
+  data.workouts.unshift(w);
+  ss(data);
+  exercises=[];renderExercises();
+  document.getElementById('workout-name').value='';
+  document.getElementById('workout-date').value=todayStr();
+  alert('Тренировка сохранена!');
+}
+
+// ── History ──
+function renderHistory(){
+  const data=gs();
+  const ws=data.workouts||[];
+  const el=document.getElementById('history-list');
+  if(ws.length===0){el.innerHTML='<div class="empty-state">Нет тренировок.<br>Запиши первую в разделе «Зал».</div>';return;}
+  el.innerHTML=ws.map((w,wi)=>{
+    const totalSets=w.exercises.reduce((a,e)=>a+e.sets.length,0);
+    const totalVol=w.exercises.reduce((a,e)=>a+e.sets.reduce((b,s)=>{
+      const kg=parseFloat(s.w)||0,r=parseInt(s.r)||0,sets=parseInt(s.s)||1;
+      return b+kg*r*sets;
+    },0),0);
+    return `
+    <div class="hist-item" onclick="toggleHist(${wi})">
+      <div class="hist-date">${fmtDate(w.date)}</div>
+      <div class="hist-title">${w.name}</div>
+      <div class="hist-stats">
+        <span class="hist-stat">${w.exercises.length} упр.</span>
+        <span class="hist-stat">${totalSets} подходов</span>
+        ${totalVol>0?'<span class="hist-stat">'+Math.round(totalVol)+' кг объём</span>':''}
+      </div>
+      <div class="hist-detail" id="hist-detail-${wi}">
+        ${w.exercises.map(ex=>`
+          <div class="hist-ex">
+            <div class="hist-ex-name">${ex.name}</div>
+            ${ex.sets.map((s,si)=>`<div class="hist-set">Подход ${si+1}: ${s.w?s.w+'кг':'—'} × ${s.r||'—'} повт × ${s.s||1} подх</div>`).join('')}
+            ${ex.note?`<div style="font-size:11px;color:var(--text3);margin-top:3px;">📝 ${ex.note}</div>`:''}
+          </div>
+        `).join('')}
+        <button class="btn-sm btn-sm-red" style="margin-top:4px;" onclick="event.stopPropagation();delWorkout(${wi})">Удалить</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleHist(wi){
+  const el=document.getElementById('hist-detail-'+wi);
+  el.style.display=el.style.display==='block'?'none':'block';
+}
+
+function delWorkout(wi){
+  if(!confirm('Удалить тренировку?'))return;
+  const data=gs();
+  data.workouts.splice(wi,1);
+  ss(data);renderHistory();
+}
+
+// ── Progress ──
+function renderProgressSelect(){
+  const data=gs();
+  const ws=data.workouts||[];
+  const exNames=new Set();
+  ws.forEach(w=>w.exercises.forEach(e=>exNames.add(e.name)));
+  const sel=document.getElementById('progress-ex-select');
+  sel.innerHTML='<option value="">Выбери упражнение...</option>';
+  [...exNames].forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
+}
+
+function renderProgress(){
+  const name=document.getElementById('progress-ex-select').value;
+  const el=document.getElementById('progress-content');
+  if(!name){el.innerHTML='';return;}
+  const data=gs();
+  const ws=(data.workouts||[]).filter(w=>w.exercises.some(e=>e.name===name));
+  if(ws.length===0){el.innerHTML='<div class="note">Нет данных по этому упражнению.</div>';return;}
+
+  const points=ws.slice().reverse().map(w=>{
+    const ex=w.exercises.find(e=>e.name===name);
+    const maxW=Math.max(...ex.sets.map(s=>parseFloat(s.w)||0));
+    const totalVol=ex.sets.reduce((a,s)=>{
+      return a+(parseFloat(s.w)||0)*(parseInt(s.r)||0)*(parseInt(s.s)||1);
+    },0);
+    return{date:w.date,maxW,totalVol,sets:ex.sets};
+  });
+
+  const maxVol=Math.max(...points.map(p=>p.totalVol),1);
+  const bars=points.slice(-12).map(p=>{
+    const h=Math.max(8,Math.round(p.totalVol/maxVol*80));
+    return`<div class="chart-bar-wrap">
+      <div class="chart-val">${Math.round(p.totalVol)}</div>
+      <div class="chart-bar" style="height:${h}px;"></div>
+      <div class="chart-label">${p.date.slice(5)}</div>
+    </div>`;
+  }).join('');
+
+  const last=points[points.length-1];
+  const prev=points.length>1?points[points.length-2]:null;
+  const diff=prev?last.maxW-prev.maxW:0;
+  const diffStr=diff>0?`<span style="color:var(--green);">+${diff}кг</span>`:diff<0?`<span style="color:var(--red);">${diff}кг</span>`:'';
+
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-title">${name}</div>
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <div class="mc" style="flex:1;min-width:80px;"><div class="mv">${last.maxW||0}кг</div><div class="ml">Макс вес</div></div>
+        <div class="mc" style="flex:1;min-width:80px;"><div class="mv">${points.length}</div><div class="ml">Тренировок</div></div>
+        ${prev?`<div class="mc" style="flex:1;min-width:80px;"><div class="mv">${diffStr||'0кг'}</div><div class="ml">Vs прошлый раз</div></div>`:''}
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:6px;">ОБЪЁМ (кг×повт×подх)</div>
+      <div class="chart-wrap"><div class="chart-inner">${bars}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Последняя тренировка — ${fmtDate(last.date)}</div>
+      ${last.sets.map((s,i)=>`<div style="font-size:13px;color:var(--text2);padding:5px 0;border-top:1px solid var(--border);">
+        <span style="color:var(--text3);font-size:11px;">Подход ${i+1}</span>&nbsp;&nbsp;
+        <b>${s.w||'—'} кг</b> × <b>${s.r||'—'} повт</b> × <b>${s.s||1} подх</b>
+      </div>`).join('')}
+    </div>
+  `;
+}
+
+// ── CALORIES ──
+let pendingFoodData=null;
+
+function onPhotoSelected(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=document.getElementById('photo-preview');
+    img.src=ev.target.result;
+    img.style.display='block';
+    document.getElementById('cal-result').style.display='none';
+    analyzePhoto(ev.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzePhoto(base64){
+  document.getElementById('cal-loading').style.display='block';
+  document.getElementById('cal-result').style.display='none';
+  pendingFoodData=null;
+
+  const base64Data=base64.split(',')[1];
+  const mediaType=base64.split(';')[0].split(':')[1];
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:mediaType,data:base64Data}},
+            {type:'text',text:`Ты диетолог. Посмотри на фото еды и определи калории и БЖУ.
+Ответь ТОЛЬКО валидным JSON без пояснений и без markdown, строго в таком формате:
+{"items":[{"name":"Название блюда","weight_g":100,"kcal":200,"protein_g":15,"carb_g":20,"fat_g":8}],"total_kcal":200,"total_protein_g":15,"total_carb_g":20,"total_fat_g":8}
+Если несколько блюд — добавь каждое в items. Оценивай реалистично по размеру порции на фото.`}
+          ]
+        }]
+      })
+    });
+    const d=await resp.json();
+    const text=d.content[0].text.trim().replace(/```json|```/g,'').trim();
+    const food=JSON.parse(text);
+    pendingFoodData=food;
+    showCalResult(food);
+  }catch(err){
+    alert('Ошибка анализа. Попробуй ещё раз.');
+  }finally{
+    document.getElementById('cal-loading').style.display='none';
+  }
+}
+
+function showCalResult(food){
+  const rows=food.items.map(it=>`
+    <div class="cal-row">
+      <div class="cal-food">${it.name}<br><span style="font-size:11px;color:var(--text3);">${it.weight_g}г · Б:${it.protein_g}г У:${it.carb_g}г Ж:${it.fat_g}г</span></div>
+      <div class="cal-kcal">${it.kcal} ккал</div>
+    </div>
+  `).join('');
+  document.getElementById('cal-result-rows').innerHTML=rows;
+  document.getElementById('cal-result-total').textContent=food.total_kcal+' ккал';
+  document.getElementById('cal-result').style.display='block';
+}
+
+function addToDay(){
+  if(!pendingFoodData)return;
+  const data=gs();
+  const tk=todayStr();
+  if(!data.foodLog)data.foodLog={};
+  if(!data.foodLog[tk])data.foodLog[tk]=[];
+  data.foodLog[tk].push({...pendingFoodData,time:new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})});
+  ss(data);
+  renderFoodLog();
+  updateCalTotals();
+  resetPhoto();
+  alert('Добавлено в дневник!');
+}
+
+function resetPhoto(){
+  document.getElementById('photo-preview').style.display='none';
+  document.getElementById('photo-preview').src='';
+  document.getElementById('cal-result').style.display='none';
+  document.getElementById('photo-input').value='';
+  pendingFoodData=null;
+}
+
+function renderFoodLog(){
+  const data=gs();
+  const tk=todayStr();
+  const log=(data.foodLog&&data.foodLog[tk])||[];
+  const el=document.getElementById('food-log-list');
+  const empty=document.getElementById('food-log-empty');
+  if(log.length===0){el.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  el.innerHTML=log.map((entry,i)=>`
+    <div style="padding:8px 0;border-top:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:12px;color:var(--text3);">${entry.time||''}</span>
+        <button class="btn-sm btn-sm-red" onclick="delFoodEntry(${i})">Удалить</button>
+      </div>
+      ${entry.items.map(it=>`<div style="font-size:13px;color:var(--text2);margin-bottom:2px;">${it.name} — <b>${it.kcal} ккал</b></div>`).join('')}
+      <div style="font-size:11px;color:var(--text3);margin-top:3px;">Итого: ${entry.total_kcal} ккал · Б:${entry.total_protein_g}г У:${entry.total_carb_g}г Ж:${entry.total_fat_g}г</div>
+    </div>
+  `).join('');
+  updateCalTotals();
+}
+
+function delFoodEntry(i){
+  const data=gs();const tk=todayStr();
+  if(data.foodLog&&data.foodLog[tk])data.foodLog[tk].splice(i,1);
+  ss(data);renderFoodLog();
+}
+
+function updateCalTotals(){
+  const data=gs();const tk=todayStr();
+  const log=(data.foodLog&&data.foodLog[tk])||[];
+  const totals=log.reduce((a,e)=>({
+    kcal:a.kcal+(e.total_kcal||0),
+    prot:a.prot+(e.total_protein_g||0),
+    carb:a.carb+(e.total_carb_g||0),
+    fat:a.fat+(e.total_fat_g||0)
+  }),{kcal:0,prot:0,carb:0,fat:0});
+  document.getElementById('cal-today-kcal').textContent=Math.round(totals.kcal);
+  document.getElementById('cal-today-prot').textContent=Math.round(totals.prot)+'г';
+  document.getElementById('cal-today-carb').textContent=Math.round(totals.carb)+'г';
+  document.getElementById('cal-today-fat').textContent=Math.round(totals.fat)+'г';
+}
+
+// init
+updateCalTotals();
+</script>
+</body>
+</html>
