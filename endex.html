@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Моё расписание</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a1a1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Расписание">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+
+:root {
+  --bg: #f0efe9;
+  --bg2: #ffffff;
+  --bg3: #f5f4f0;
+  --text: #1a1a1a;
+  --text2: #555;
+  --text3: #999;
+  --text4: #bbb;
+  --border: #f2f1ed;
+  --border2: #e8e6e0;
+  --free-bg: #f7f6f1;
+  --free-border: #ddd;
+  --warn-bg: #fff8e0;
+  --warn-text: #7a5800;
+  --info-bg: #eef4ff;
+  --info-text: #1a4599;
+  --note-bg: #f5f4f0;
+  --note-text: #666;
+  --wait-bg: #fff4e0;
+  --wait-text: #8c5000;
+  --check-done-bg: #e0f5ed;
+  --check-done-border: #18a06b;
+  --tab-on: #1a1a1a;
+  --tab-on-text: #ffffff;
+  --tab-off: #ffffff;
+  --tab-off-text: #999;
+  --macro-bg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a1a;
+    --bg2: #2a2a2a;
+    --bg3: #222222;
+    --text: #f0f0f0;
+    --text2: #cccccc;
+    --text3: #888888;
+    --text4: #666666;
+    --border: #333333;
+    --border2: #3a3a3a;
+    --free-bg: #252525;
+    --free-border: #444;
+    --warn-bg: #2e2500;
+    --warn-text: #f0c060;
+    --info-bg: #0a1a35;
+    --info-text: #7ab0ff;
+    --note-bg: #252525;
+    --note-text: #aaa;
+    --wait-bg: #2e2000;
+    --wait-text: #f0a830;
+    --check-done-bg: #0a2a1a;
+    --check-done-border: #18a06b;
+    --tab-on: #f0f0f0;
+    --tab-on-text: #1a1a1a;
+    --tab-off: #2a2a2a;
+    --tab-off-text: #888;
+    --macro-bg: #2a2a2a;
+  }
+}
+
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);padding:16px;max-width:520px;margin:0 auto;transition:background 0.2s,color 0.2s;}
+
+/* TABS */
+.switcher{display:flex;gap:8px;margin:16px 0 20px;}
+.stab{flex:1;padding:11px 6px;border-radius:13px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;text-align:center;border:none;cursor:pointer;transition:all 0.18s;}
+.stab.on{background:var(--tab-on);color:var(--tab-on-text);}
+.stab.off{background:var(--tab-off);color:var(--tab-off-text);}
+
+/* INNER TABS */
+.inner-tabs{display:flex;gap:6px;margin-bottom:18px;}
+.itab{flex:1;padding:9px 4px;border-radius:11px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;text-align:center;border:none;cursor:pointer;transition:all 0.18s;}
+.itab.on{background:var(--tab-on);color:var(--tab-on-text);}
+.itab.off{background:var(--tab-off);color:var(--tab-off-text);}
+
+.view{display:none;}.view.on{display:block;}
+.shift{display:none;}.shift.on{display:block;}
+
+.page-title{font-size:22px;font-weight:700;margin-bottom:3px;}
+.page-sub{font-size:13px;color:var(--text3);margin-bottom:18px;}
+
+/* MACRO */
+.macro-bar{display:flex;gap:6px;margin-bottom:7px;}
+.mc{flex:1;background:var(--macro-bg);border-radius:13px;padding:10px 8px;text-align:center;}
+.mv{font-size:17px;font-weight:700;color:var(--text);}
+.ml{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;}
+
+/* SECTION LABEL */
+.slabel{font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;display:flex;align-items:center;gap:7px;margin:20px 0 8px;}
+.slabel .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.co{color:#c46c10;}.co .dot{background:#e07d1a;}
+.cg{color:#137a52;}.cg .dot{background:#18a06b;}
+.cp{color:#7060e0;}.cp .dot{background:#6b5fd4;}
+.cb{color:#2e7fc9;}.cb .dot{background:#2e7fc9;}
+.cr{color:#c94040;}.cr .dot{background:#c94040;}
+.cx{color:var(--text3);}.cx .dot{background:var(--text3);}
+.cf{color:var(--text2);}.cf .dot{background:var(--text3);}
+
+/* BLOCK */
+.block{background:var(--bg2);border-radius:15px;padding:13px 15px;margin-bottom:7px;}
+.free{background:var(--free-bg);border:1.5px dashed var(--free-border);border-radius:15px;padding:12px 15px;margin-bottom:7px;}
+.free-title{font-size:13px;font-weight:700;color:var(--text3);margin-bottom:2px;}
+.free-sub{font-size:12px;color:var(--text4);}
+
+/* CHECKABLE ITEM */
+.item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--border);cursor:pointer;user-select:none;transition:background 0.15s;border-radius:8px;}
+.item:first-child{border-top:none;padding-top:0;}
+.item.done{opacity:0.55;}
+.item.done .iname{text-decoration:line-through;}
+
+.check{width:22px;height:22px;border-radius:7px;border:2px solid var(--border2);background:transparent;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all 0.18s;font-size:13px;color:transparent;}
+.item.done .check{background:#18a06b;border-color:#18a06b;color:#fff;}
+
+.il{flex:1;}
+.iname{font-size:14px;font-weight:600;color:var(--text);margin-bottom:1px;transition:color 0.15s;}
+.isub{font-size:12px;color:var(--text3);line-height:1.45;}
+.idetail{font-size:11px;color:var(--text4);margin-top:2px;line-height:1.4;}
+.badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:2px;}
+.ba{background:#fff4e0;color:#8c5000;}
+.bt{background:#e0f5ed;color:#095c36;}
+.bp{background:#eeecff;color:#3d2fa0;}
+.bg2{background:var(--bg3);color:var(--text2);}
+.new{font-size:10px;font-weight:700;color:#18a06b;background:#e0f5ed;padding:2px 6px;border-radius:6px;margin-left:4px;vertical-align:middle;}
+
+@media (prefers-color-scheme: dark) {
+  .ba{background:#2e2000;color:#f0a830;}
+  .bt{background:#0a2a1a;color:#4dd890;}
+  .bp{background:#1a1040;color:#a090ff;}
+}
+
+/* MEAL */
+.mt{font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.mlist{list-style:none;}
+.mlist li{font-size:13px;color:var(--text2);padding:5px 0;border-top:1px solid var(--border);display:flex;align-items:flex-start;gap:6px;line-height:1.45;flex-wrap:wrap;}
+.mlist li:first-child{border-top:none;}
+.mlist li::before{content:'—';color:var(--text4);flex-shrink:0;}
+.mtip{font-size:11px;color:var(--text4);margin-top:7px;line-height:1.5;}
+
+/* SKINCARE */
+.sk{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid var(--border);}
+.sk:first-child{border-top:none;padding-top:0;}
+.skn{width:22px;height:22px;border-radius:50%;background:var(--bg3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text3);margin-top:1px;}
+.skb{flex:1;}
+.skname{font-size:14px;font-weight:600;color:var(--text);}
+.sktip{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4;}
+.skwait{display:inline-block;font-size:10px;font-weight:700;background:var(--wait-bg);color:var(--wait-text);padding:2px 7px;border-radius:10px;margin-top:4px;}
+
+/* WEEK PILLS */
+.wr{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border);}
+.wr:first-child{border-top:none;padding-top:0;}
+.dp{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.dl{font-size:12px;color:var(--text2);}
+
+/* ALERTS */
+.warn{background:var(--warn-bg);border-radius:13px;padding:11px 14px;margin-bottom:7px;font-size:12px;color:var(--warn-text);line-height:1.55;}
+.info{background:var(--info-bg);border-radius:13px;padding:11px 14px;margin-bottom:7px;font-size:12px;color:var(--info-text);line-height:1.55;}
+.note{background:var(--note-bg);border-radius:13px;padding:11px 14px;margin-bottom:7px;font-size:12px;color:var(--note-text);line-height:1.55;}
+
+.divider{border:none;border-top:2px solid var(--border2);margin:24px 0 4px;}
+.sh{font-size:17px;font-weight:700;margin:16px 0 10px;color:var(--text);}
+
+/* PROGRESS */
+.progress-wrap{background:var(--bg2);border-radius:15px;padding:13px 15px;margin-bottom:7px;}
+.progress-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.progress-label{font-size:13px;font-weight:700;color:var(--text);}
+.progress-pct{font-size:13px;font-weight:700;color:#18a06b;}
+.progress-bar-bg{background:var(--border2);border-radius:10px;height:8px;overflow:hidden;}
+.progress-bar{background:linear-gradient(90deg,#18a06b,#4dd890);height:8px;border-radius:10px;transition:width 0.4s ease;}
+
+/* CALENDAR */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cal-title{font-size:16px;font-weight:700;color:var(--text);}
+.cal-nav{background:var(--bg2);border:none;border-radius:9px;padding:6px 12px;font-size:16px;cursor:pointer;color:var(--text);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-day-name{font-size:10px;font-weight:700;text-align:center;color:var(--text3);padding:4px 0;text-transform:uppercase;}
+.cal-day{aspect-ratio:1;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--text3);background:var(--bg2);}
+.cal-day.has-data{cursor:pointer;}
+.cal-day.empty{background:transparent;}
+.cal-day.today{border:2px solid #18a06b;color:var(--text);}
+.cal-day.full{background:#18a06b;color:#fff;}
+.cal-day.partial{background:#a0dfc0;color:#0a5030;}
+.cal-day.zero{background:var(--bg2);color:var(--text4);}
+@media (prefers-color-scheme: dark){
+  .cal-day.partial{background:#0a3a20;color:#4dd890;}
+}
+.cal-legend{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap;}
+.cal-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);}
+.cal-leg-dot{width:12px;height:12px;border-radius:4px;}
+
+/* RESET BTN */
+.reset-btn{width:100%;padding:12px;border-radius:13px;background:var(--bg2);border:1.5px solid var(--border2);font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;color:var(--text3);cursor:pointer;margin-bottom:7px;}
+
+.section-label-row{display:flex;align-items:center;gap:7px;margin:20px 0 8px;}
+
+/* TABS */
+.tabs{display:flex;gap:7px;margin:16px 0 20px;}
+.tab{flex:1;padding:10px 4px;border-radius:12px;border:none;font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;text-align:center;cursor:pointer;transition:all .18s;}
+.tab.on{background:var(--text);color:var(--bg);}
+.tab.off{background:var(--card);color:var(--text3);}
+.view{display:none;}.view.on{display:block;}
+
+.page-title{font-size:22px;font-weight:700;margin-bottom:3px;}
+.page-sub{font-size:13px;color:var(--text3);margin-bottom:20px;}
+
+/* CARDS */
+.card{background:var(--card);border-radius:15px;padding:14px 15px;margin-bottom:9px;}
+.card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;}
+.card-sub{font-size:12px;color:var(--text3);margin-bottom:12px;}
+
+/* INPUTS */
+input,textarea,select{font-family:'Manrope',sans-serif;font-size:13px;background:var(--input-bg);border:1.5px solid var(--input-border);border-radius:10px;color:var(--text);padding:9px 12px;width:100%;outline:none;transition:border .15s;}
+input:focus,textarea:focus,select:focus{border-color:var(--green);}
+textarea{resize:none;min-height:60px;}
+select{appearance:none;}
+
+/* BUTTONS */
+.btn{width:100%;padding:13px;border-radius:13px;border:none;font-family:'Manrope',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .18s;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:active{opacity:.85;}
+.btn-gray{background:var(--card);border:1.5px solid var(--border2);color:var(--text3);}
+.btn-red{background:var(--redl);color:var(--red);border:none;}
+.btn-sm{padding:7px 14px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:'Manrope',sans-serif;}
+.btn-sm-green{background:var(--greenl);color:var(--greend);}
+.btn-sm-red{background:var(--redl);color:var(--red);}
+.btn-sm-gray{background:var(--bg3);color:var(--text2);}
+
+/* EXERCISE CARD */
+.ex-card{background:var(--bg3);border-radius:13px;padding:12px 14px;margin-bottom:8px;position:relative;}
+.ex-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.sets-list{margin-bottom:8px;}
+.set-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.set-num{font-size:11px;font-weight:700;color:var(--text3);width:24px;flex-shrink:0;}
+.set-input{flex:1;padding:7px 10px;font-size:13px;}
+.set-del{background:none;border:none;color:var(--text4);font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;}
+.set-del:active{color:var(--red);}
+.ex-actions{display:flex;gap:7px;flex-wrap:wrap;}
+.ex-del-btn{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text4);font-size:18px;cursor:pointer;}
+.ex-del-btn:active{color:var(--red);}
+.ex-note{margin-top:8px;}
+
+/* WORKOUT HISTORY */
+.hist-item{background:var(--card);border-radius:13px;padding:12px 14px;margin-bottom:8px;cursor:pointer;}
+.hist-date{font-size:12px;color:var(--text3);margin-bottom:3px;}
+.hist-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.hist-stats{display:flex;gap:10px;flex-wrap:wrap;}
+.hist-stat{font-size:12px;color:var(--text2);background:var(--bg3);padding:3px 9px;border-radius:20px;}
+.hist-detail{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+.hist-ex{margin-bottom:8px;}
+.hist-ex-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.hist-set{font-size:12px;color:var(--text2);margin-bottom:2px;}
+
+/* PROGRESS CHART */
+.chart-wrap{margin-top:8px;overflow-x:auto;}
+.chart-inner{display:flex;align-items:flex-end;gap:6px;min-height:80px;padding-bottom:4px;}
+.chart-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:36px;}
+.chart-bar{width:28px;border-radius:6px 6px 0 0;background:var(--green);min-height:4px;transition:height .3s;}
+.chart-val{font-size:9px;color:var(--text3);font-weight:600;}
+.chart-label{font-size:9px;color:var(--text3);text-align:center;max-width:36px;word-break:break-all;}
+
+/* CALORIE */
+.upload-area{border:2px dashed var(--border2);border-radius:13px;padding:24px;text-align:center;cursor:pointer;margin-bottom:12px;transition:border .2s;}
+.upload-area:active{border-color:var(--green);}
+.upload-icon{font-size:36px;margin-bottom:8px;}
+.upload-text{font-size:13px;color:var(--text3);}
+#photo-preview{width:100%;border-radius:13px;margin-bottom:12px;display:none;}
+.cal-result{background:var(--greenl);border-radius:13px;padding:14px;margin-bottom:9px;display:none;}
+.cal-result-title{font-size:13px;font-weight:700;color:var(--greend);margin-bottom:8px;}
+.cal-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid rgba(0,0,0,.06);}
+.cal-row:first-child{border-top:none;}
+.cal-food{font-size:13px;color:var(--text);}
+.cal-kcal{font-size:13px;font-weight:700;color:var(--green);}
+.cal-total{font-size:15px;font-weight:700;color:var(--greend);margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.1);display:flex;justify-content:space-between;}
+.loading{text-align:center;padding:20px;color:var(--text3);font-size:13px;display:none;}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* MACRO BAR */
+.macro-bar{display:flex;gap:6px;margin-bottom:9px;}
+.mc{flex:1;background:var(--card);border-radius:12px;padding:9px 8px;text-align:center;}
+.mv{font-size:16px;font-weight:700;color:var(--text);}
+.ml{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-top:1px;}
+
+/* BADGE */
+.badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;}
+.bg{background:var(--bg3);color:var(--text2);}
+.note{background:var(--bg3);border-radius:12px;padding:10px 13px;font-size:12px;color:var(--text3);margin-bottom:9px;line-height:1.5;}
+.warn{background:var(--orangel);border-radius:12px;padding:10px 13px;font-size:12px;color:var(--oranged);margin-bottom:9px;}
+.divider{border:none;border-top:1.5px solid var(--border2);margin:18px 0;}
+.empty-state{text-align:center;padding:30px 20px;color:var(--text3);font-size:13px;line-height:1.6;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+label{font-size:12px;font-weight:600;color:var(--text3);display:block;margin-bottom:5px;}
+.form-group{margin-bottom:10px;}
+
+
+/* WORK TRACKER */
+.work-card{background:var(--card);border-radius:15px;padding:14px 15px;margin-bottom:9px;}
+.work-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;}
+.money-big{font-size:32px;font-weight:700;color:var(--green);margin-bottom:2px;}
+.money-sub{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.stat-box{background:var(--bg3);border-radius:12px;padding:10px 12px;}
+.stat-val{font-size:18px;font-weight:700;color:var(--text);}
+.stat-lbl{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-top:2px;}
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px;}
+.day-name-w{font-size:10px;font-weight:700;text-align:center;color:var(--text3);padding:3px 0;}
+.day-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;cursor:pointer;position:relative;transition:all .15s;}
+.day-cell.empty{background:transparent;cursor:default;}
+.day-cell.workday{background:var(--greenl);color:var(--greend);}
+.day-cell.weekend{background:var(--bg3);color:var(--text3);}
+.day-cell.extra{background:#fff4e0;color:#8c5000;}
+.day-cell.today-w{box-shadow:0 0 0 2px var(--green);}
+.day-cell.past-work{background:var(--green);color:#fff;}
+.day-cell.past-extra{background:#e07d1a;color:#fff;}
+.day-cell.off{background:var(--bg3);color:var(--text4);text-decoration:line-through;}
+.hours-badge{position:absolute;bottom:1px;right:2px;font-size:7px;font-weight:700;}
+.work-legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.wleg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);}
+.wleg-dot{width:10px;height:10px;border-radius:3px;}
+.day-popup{background:var(--card);border-radius:13px;padding:13px 15px;margin-bottom:9px;border:1.5px solid var(--green);}
+.day-popup-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;}
+.rate-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.rate-lbl{font-size:12px;color:var(--text3);white-space:nowrap;}
+.month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.month-title-w{font-size:16px;font-weight:700;color:var(--text);}
+.mnav-btn{background:var(--card);border:none;border-radius:9px;padding:6px 14px;font-size:16px;cursor:pointer;color:var(--text);}
+.progress-month{background:var(--bg3);border-radius:10px;height:10px;overflow:hidden;margin-bottom:4px;}
+.progress-month-fill{background:linear-gradient(90deg,var(--green),#4dd890);height:10px;border-radius:10px;transition:width .4s;}
+.target-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:12px;}
+
+
+/* === УЛУЧШЕНИЯ === */
+
+/* Плавная анимация появления блоков */
+.block, .free, .warn, .info, .note {
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Галочка — тактильный отклик */
+.item:active { transform: scale(0.98); }
+
+/* Прогресс-бар — градиент по проценту */
+.progress-bar { transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+
+/* Switcher — скролл если не помещается */
+.switcher { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; padding-bottom: 2px; }
+.switcher::-webkit-scrollbar { display: none; }
+.stab { flex-shrink: 0; }
+
+/* Item hover на телефоне */
+.item { -webkit-tap-highlight-color: transparent; }
+
+/* Мягкая тень для карточек */
+.block { box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+
+/* Бейдж новое */
+.new { animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+
+
+
+
+/* Время на прогресс-баре */
+.progress-time { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+/* Кнопки нижней навигации — активная анимация */
+.nav-btn:active { transform: scale(0.92); }
+
+/* Work tracker улучшения */
+.day-cell { transition: transform 0.15s, box-shadow 0.15s; }
+.day-cell.has-data:active { transform: scale(0.9); }
+
+/* Тёмная тема — улучшенные тени */
+@media (prefers-color-scheme: dark) {
+  .block { box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+}
+
+</style>
+</head>
+<body>
+<div id="schedule-wrap">
+
+
+<div class="page-title">Моё расписание</div>
+<p class="page-sub">Работа · Еда · Добавки · Уход · Зал · Привычки</p>
+
+<!-- SHIFT TABS -->
+
+<div class="switcher" style="flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;">
+  <button class="stab on" onclick="swShift('s1',this)" style="flex-shrink:0;">Утро 06:00</button>
+  <button class="stab off" onclick="swShift('s3',this)" style="flex-shrink:0;">Вых → вечер</button>
+  <button class="stab off" onclick="swShift('s2',this)" style="flex-shrink:0;">Вечер 14:00</button>
+  <button class="stab off" onclick="swShift('s4',this)" style="flex-shrink:0;">Вых → утро</button>
+</div>
+
+<!-- INNER TABS -->
+<div class="inner-tabs">
+  <button class="itab on" onclick="swView('schedule',this)">Расписание</button>
+  <button class="itab off" onclick="swView('calendar',this)">Календарь</button>
+</div>
+
+<!-- ===================== SCHEDULE VIEW ===================== -->
+<div class="view on" id="v-schedule">
+
+<!-- PROGRESS -->
+<div class="progress-wrap">
+  <div class="progress-top">
+    <div class="progress-label" id="progress-date">Сегодня</div>
+    <div class="progress-pct" id="progress-pct">0%</div>
+  </div>
+  <div class="progress-bar-bg"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+</div>
+
+<!-- SMENA 1 -->
+<div class="shift on" id="s1">
+<p class="page-sub" style="margin-top:-4px;margin-bottom:16px;">Подъём 04:45 · Работа 06:00–14:00 · Зал ~15:30 · Сон 20:15</p>
+<div class="macro-bar">
+  <div class="mc"><div class="mv">2900</div><div class="ml">Ккал</div></div>
+  <div class="mc"><div class="mv">160г</div><div class="ml">Белок</div></div>
+  <div class="mc"><div class="mv">350г</div><div class="ml">Углеводы</div></div>
+  <div class="mc"><div class="mv">80г</div><div class="ml">Жиры</div></div>
+</div>
+<div class="note">Для набора 5–10 кг. Ешь каждые 3–4 часа — пропуск еды = нет роста.</div>
+
+<div class="slabel co"><div class="dot"></div>04:45 — Подъём</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-water')"><div class="check">✓</div><div class="il"><div class="iname">Выпить воду</div><div class="isub">300–500 мл сразу</div></div></div>
+  <div class="item" onclick="toggle(this,'s1-rhodiola')"><div class="check">✓</div><div class="il"><div class="iname">Родиола розовая</div><div class="isub">200–300 мг натощак, за 20 мин до еды</div></div><span class="badge ba">5д/2 вых</span></div>
+  <div class="item" onclick="toggle(this,'s1-tyrosine')"><div class="check">✓</div><div class="il"><div class="iname">L-тирозин</div><div class="isub">500 мг натощак</div></div><span class="badge ba">5д/2 вых</span></div>
+  <div class="item" onclick="toggle(this,'s1-hedgehog')"><div class="check">✓</div><div class="il"><div class="iname">Ежовик гребенчатый</div><div class="isub">1000 мг натощак</div></div><span class="badge ba">5д/2 вых</span></div>
+</div>
+
+<div class="slabel co"><div class="dot"></div>04:50 — Душ + уход за лицом</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-shower')"><div class="check">✓</div><div class="il"><div class="iname">Душ</div><div class="isub">5–7 мин. Финал 30 сек холодной воды.</div></div></div>
+</div>
+<div class="block">
+  <div class="sk"><div class="skn">1</div><div class="skb"><div class="skname">Умывашка</div><span class="skwait">подождать 1–2 мин</span></div></div>
+  <div class="sk"><div class="skn">2</div><div class="skb"><div class="skname">Витамин С сыворотка</div><div class="sktip">На сухую кожу. Осветляет, антиоксидант.</div><span class="skwait">подождать 2–3 мин</span></div></div>
+  <div class="sk"><div class="skn">3</div><div class="skb"><div class="skname">Ниацинамид</div><div class="sktip">Поверх витамина С.</div><span class="skwait">подождать 1 мин</span></div></div>
+  <div class="sk"><div class="skn">4</div><div class="skb"><div class="skname">Азелаиновая кислота</div><div class="sktip">Тонкий слой на всё лицо.</div><span class="skwait">подождать 2–3 мин</span></div></div>
+  <div class="sk"><div class="skn">5</div><div class="skb"><div class="skname">Крем</div><span class="skwait">подождать 1–2 мин</span></div></div>
+  <div class="sk"><div class="skn">6</div><div class="skb"><div class="skname">SPF 50</div><div class="sktip">Последним. 2 пальца. Всегда.</div></div></div>
+  <div class="item" onclick="toggle(this,'s1-skincare-am')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Утренний уход выполнен</div></div></div>
+</div>
+<div class="note">Витамин С на тело — после душа на влажную кожу перед одеванием.</div>
+
+<div class="slabel co"><div class="dot"></div>05:10 — Завтрак + добавки</div>
+<div class="block">
+  <div class="mt">Приём 1 — ~700 ккал</div>
+  <ul class="mlist">
+    <li>Овсянка 80–100г + молоко</li>
+    <li>3–4 яйца (омлет или варёные)</li>
+    <li>Банан или мёд 1 ст.л.</li>
+    <li>Хлеб цельнозерновой 2 куска + арахисовое масло</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s1-breakfast')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Завтрак съеден</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-d3')"><div class="check">✓</div><div class="il"><div class="iname">Витамин D3</div><div class="isub">2000 IU с едой</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s1-zinc')"><div class="check">✓</div><div class="il"><div class="iname">Цинк</div><div class="isub">15 мг с едой</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s1-tongkat')"><div class="check">✓</div><div class="il"><div class="iname">Тонгкат Али</div><div class="isub">200 мг с едой</div></div><span class="badge ba">8нед/перерыв</span></div>
+  <div class="item" onclick="toggle(this,'s1-omega')"><div class="check">✓</div><div class="il"><div class="iname">Омега-3 <span class="new">+</span></div><div class="isub">1–2 г с едой</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s1-creatine')"><div class="check">✓</div><div class="il"><div class="iname">Креатин <span class="new">+</span></div><div class="isub">3–5 г в воде или еде</div></div><span class="badge bt">ежедневно</span></div>
+</div>
+
+<div class="slabel cx"><div class="dot"></div>06:00–14:00 — Работа</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-theanine')"><div class="check">✓</div><div class="il"><div class="iname">L-теанин (если нужно)</div><div class="isub">100–200 мг при тревоге, с кофе</div></div><span class="badge bt">по потребности</span></div>
+  <div class="item" onclick="toggle(this,'s1-snack1')"><div class="check">✓</div><div class="il"><div class="iname">Перекус ~09:30</div><div class="isub">Творог 200г + фрукт + орехи 30г — ~350 ккал</div></div></div>
+  <div class="item" onclick="toggle(this,'s1-lunch')"><div class="check">✓</div><div class="il"><div class="iname">Обед ~12:00</div><div class="isub">Гречка/рис 150г + курица/рыба 150г + овощи — ~700 ккал</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>14:30 — Предтренировочный</div>
+<div class="block">
+  <div class="mt">Приём 4 — ~500 ккал</div>
+  <ul class="mlist">
+    <li>Гейнер 1 порция с молоком</li>
+    <li>Банан</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s1-pretrain')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Предтрен съеден</div><div class="isub">Только в дни тренировок</div></div></div>
+</div>
+
+<div class="slabel cr"><div class="dot"></div>15:30–17:00 — Зал</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-gym')"><div class="check">✓</div><div class="il"><div class="iname">Тренировка 60–75 мин</div><div class="isub">Присед, жим, тяга, подтягивания</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>17:10 — После зала</div>
+<div class="block">
+  <div class="mt">Приём 5 — ~500 ккал</div>
+  <ul class="mlist">
+    <li>Протеин 1 порция (30–40г) с молоком</li>
+    <li>Банан или рисовые хлебцы 3–4 шт</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s1-postrain')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Протеин после зала выпит</div></div></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>17:30 — Массажган</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-massage1')"><div class="check">✓</div><div class="il"><div class="iname">Мышцы после зала</div><div class="isub">10–15 мин. Квадрицепсы, спина, плечи, ягодицы. Скорость средняя.</div></div></div>
+  <div class="item" onclick="toggle(this,'s1-massage2')"><div class="check">✓</div><div class="il"><div class="iname">Шея и трапеции</div><div class="isub">5 мин. Мягкая насадка, давление слабое.</div></div></div>
+</div>
+
+<div class="slabel cf"><div class="dot"></div>17:50 — Приготовление еды</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-cookprep')"><div class="check">✓</div><div class="il"><div class="iname">Еда на завтра готова</div><div class="isub">Обед на работу + ужин. По контейнерам.</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>18:20 — Ужин</div>
+<div class="block">
+  <div class="mt">Приём 6 — ~650 ккал</div>
+  <ul class="mlist">
+    <li>Рыба или мясо 200г</li>
+    <li>Картошка / паста / рис 150г</li>
+    <li>Салат с оливковым маслом</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s1-dinner')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Ужин съеден</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-magnesium')"><div class="check">✓</div><div class="il"><div class="iname">Магний малат</div><div class="isub">300–400 мг после ужина</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s1-copper')"><div class="check">✓</div><div class="il"><div class="iname">Медь</div><div class="isub">1 мг после ужина</div></div><span class="badge bg2">через день</span></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>18:45 — Вечерний уход</div>
+<div class="block">
+  <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);">По дням недели</div>
+  <div class="wr"><span class="dp ba">Пн</span><span class="dp ba">Ср</span><span class="dp ba">Пт</span><span class="dl">— адапален</span></div>
+  <div class="wr"><span class="dp bt">Вт</span><span class="dp bt">Чт</span><span class="dl">— эксфолиант</span></div>
+  <div class="wr"><span class="dp bg2">Сб</span><span class="dp bg2">Вс</span><span class="dl">— умыться + крем</span></div>
+  <div class="item" onclick="toggle(this,'s1-skincare-pm')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Вечерний уход выполнен</div></div></div>
+</div>
+<div class="warn">Адапален и эксфолиант — никогда в один день.</div>
+
+
+<div class="slabel cp"><div class="dot"></div>19:00 — Нос и рот (вечер)</div>
+<div class="block">
+  <div class="sk"><div class="skn">👃</div><div class="skb"><div class="skname">Ксилитол (нос)</div><div class="sktip">Повторное увлажнение перед сном.</div></div></div>
+  <div class="sk"><div class="skn">🌿</div><div class="skb"><div class="skname">Масло абрикоса (нос)</div><div class="sktip">Пару капель внутри ноздрей — питание на ночь.</div></div></div>
+  <div class="sk"><div class="skn">💧</div><div class="skb"><div class="skname">Eludril (рот)</div><div class="sktip">Полоскать 30 сек после чистки зубов перед сном.</div></div></div>
+  <div class="item" onclick="toggle(this,'s1-nose-mouth-pm')"><div class="check">✓</div><div class="il"><div class="iname">Нос и рот вечер — готово</div></div></div>
+</div>
+<div class="slabel cf"><div class="dot"></div>19:15 — Свободное время</div>
+<div class="free">
+  <div class="free-title">Твоё время (1 час)</div>
+  <div class="free-sub">Сериал, телефон, прогулка — без задач.</div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>19:30 — Привычки</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-reading')"><div class="check">✓</div><div class="il"><div class="iname">Чтение книги</div><div class="isub">20–30 мин. Не телефон.</div></div></div>
+  <div class="item" onclick="toggle(this,'s1-journal')"><div class="check">✓</div><div class="il"><div class="iname">Дневник</div><div class="isub">10 мин. Что было, что завтра.</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>19:50 — Поздний перекус</div>
+<div class="block">
+  <div class="mt">Приём 7 — ~350 ккал</div>
+  <ul class="mlist">
+    <li>Творог 200г жирный (5–9%)</li>
+    <li>Мёд 1 ч.л. + орехи горсть</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s1-lateснack')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Поздний перекус съеден</div></div></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>20:00 — Массажган перед сном</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-massage-pm')"><div class="check">✓</div><div class="il"><div class="iname">Шея, трапеции, поясница</div><div class="isub">8–10 мин. Скорость низкая, давление мягкое.</div></div></div>
+</div>
+
+<div class="slabel cb"><div class="dot"></div>20:05 — Перед сном</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-5htp')"><div class="check">✓</div><div class="il"><div class="iname">5-HTP</div><div class="isub">50 мг</div></div><span class="badge bp">если хуже сон — убрать</span></div>
+  <div class="item" onclick="toggle(this,'s1-glycine')"><div class="check">✓</div><div class="il"><div class="iname">Глицин <span class="new">+</span></div><div class="isub">1–3 г рассасывать</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s1-phone')"><div class="check">✓</div><div class="il"><div class="iname">Телефон убрал</div><div class="isub">За 30 мин до сна</div></div></div>
+</div>
+<div class="info">Сон 20:15 → подъём 04:45 = 8ч 30мин</div>
+
+<div class="divider"></div>
+<div class="sh">Волосы — 2–3 раза в неделю</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s1-rosemary')"><div class="check">✓</div><div class="il"><div class="iname">Масло розмарина</div><div class="isub">Перед душем. 30–60 мин, смыть.</div></div><span class="badge bg2">2–3 р/нед</span></div>
+  <div class="item" onclick="toggle(this,'s1-dermaroller')"><div class="check">✓</div><div class="il"><div class="iname">Дермароллер 0.5 мм</div><div class="isub">Отдельный день. После роллера масло — через 24 ч.</div></div><span class="badge bg2">1 р/нед</span></div>
+</div>
+</div><!-- /s1 -->
+
+<!-- SMENA 2 -->
+<div class="shift" id="s2">
+<p class="page-sub" style="margin-top:-4px;margin-bottom:16px;">Подъём 06:30 · Зал 08:00 · Работа 14:00–22:00 · Сон 23:30</p>
+<div class="macro-bar">
+  <div class="mc"><div class="mv">2900</div><div class="ml">Ккал</div></div>
+  <div class="mc"><div class="mv">160г</div><div class="ml">Белок</div></div>
+  <div class="mc"><div class="mv">350г</div><div class="ml">Углеводы</div></div>
+  <div class="mc"><div class="mv">80г</div><div class="ml">Жиры</div></div>
+</div>
+<div class="note">Для набора 5–10 кг. Ешь каждые 3–4 часа — пропуск еды = нет роста.</div>
+
+<div class="slabel co"><div class="dot"></div>06:30 — Подъём</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-water')"><div class="check">✓</div><div class="il"><div class="iname">Выпить воду</div><div class="isub">300–500 мл сразу</div></div></div>
+  <div class="item" onclick="toggle(this,'s2-rhodiola')"><div class="check">✓</div><div class="il"><div class="iname">Родиола розовая</div><div class="isub">200–300 мг натощак</div></div><span class="badge ba">5д/2 вых</span></div>
+  <div class="item" onclick="toggle(this,'s2-tyrosine')"><div class="check">✓</div><div class="il"><div class="iname">L-тирозин</div><div class="isub">500 мг натощак</div></div><span class="badge ba">5д/2 вых</span></div>
+  <div class="item" onclick="toggle(this,'s2-hedgehog')"><div class="check">✓</div><div class="il"><div class="iname">Ежовик гребенчатый</div><div class="isub">1000 мг натощак</div></div><span class="badge ba">5д/2 вых</span></div>
+</div>
+
+<div class="slabel co"><div class="dot"></div>06:40 — Душ + уход за лицом</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-shower')"><div class="check">✓</div><div class="il"><div class="iname">Душ</div><div class="isub">5–7 мин. Финал 30 сек холодной.</div></div></div>
+</div>
+<div class="block">
+  <div class="sk"><div class="skn">1</div><div class="skb"><div class="skname">Умывашка</div><span class="skwait">1–2 мин</span></div></div>
+  <div class="sk"><div class="skn">2</div><div class="skb"><div class="skname">Витамин С сыворотка</div><span class="skwait">2–3 мин</span></div></div>
+  <div class="sk"><div class="skn">3</div><div class="skb"><div class="skname">Ниацинамид</div><span class="skwait">1 мин</span></div></div>
+  <div class="sk"><div class="skn">4</div><div class="skb"><div class="skname">Азелаиновая кислота</div><span class="skwait">2–3 мин</span></div></div>
+  <div class="sk"><div class="skn">5</div><div class="skb"><div class="skname">Крем</div><span class="skwait">1–2 мин</span></div></div>
+  <div class="sk"><div class="skn">6</div><div class="skb"><div class="skname">SPF 50</div><div class="sktip">Последним. 2 пальца.</div></div></div>
+  <div class="item" onclick="toggle(this,'s2-skincare-am')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Утренний уход выполнен</div></div></div>
+</div>
+
+<div class="slabel co"><div class="dot"></div>07:00 — Завтрак + добавки</div>
+<div class="block">
+  <div class="mt">Приём 1 — ~700 ккал</div>
+  <ul class="mlist">
+    <li>Овсянка 80–100г + молоко</li>
+    <li>3–4 яйца</li>
+    <li>Банан или мёд</li>
+    <li>Хлеб 2 куска + арахисовое масло</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s2-breakfast')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Завтрак съеден</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-d3')"><div class="check">✓</div><div class="il"><div class="iname">Витамин D3</div><div class="isub">2000 IU с едой</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s2-zinc')"><div class="check">✓</div><div class="il"><div class="iname">Цинк</div><div class="isub">15 мг с едой</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s2-tongkat')"><div class="check">✓</div><div class="il"><div class="iname">Тонгкат Али</div><div class="isub">200 мг с едой</div></div><span class="badge ba">8нед/перерыв</span></div>
+  <div class="item" onclick="toggle(this,'s2-omega')"><div class="check">✓</div><div class="il"><div class="iname">Омега-3 <span class="new">+</span></div><div class="isub">1–2 г с едой</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s2-creatine')"><div class="check">✓</div><div class="il"><div class="iname">Креатин <span class="new">+</span></div><div class="isub">3–5 г в воде или еде</div></div><span class="badge bt">ежедневно</span></div>
+</div>
+
+<div class="slabel co"><div class="dot"></div>07:30 — Предтренировочный</div>
+<div class="block">
+  <div class="mt">Приём 2 — ~400 ккал</div>
+  <ul class="mlist">
+    <li>Гейнер 1 порция с молоком</li>
+    <li>Банан</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s2-pretrain')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Предтрен съеден</div><div class="isub">Только в дни тренировок</div></div></div>
+</div>
+
+<div class="slabel cr"><div class="dot"></div>08:00–09:30 — Зал</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-gym')"><div class="check">✓</div><div class="il"><div class="iname">Тренировка 60–75 мин</div><div class="isub">Присед, жим, тяга, подтягивания</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>09:40 — После зала</div>
+<div class="block">
+  <div class="mt">Приём 3 — ~500 ккал</div>
+  <ul class="mlist">
+    <li>Протеин 1 порция (30–40г) с молоком</li>
+    <li>Банан или хлебцы 3–4 шт</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s2-postrain')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Протеин выпит</div></div></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>10:00 — Массажган после зала</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-massage1')"><div class="check">✓</div><div class="il"><div class="iname">Мышцы</div><div class="isub">10–15 мин. Скорость средняя.</div></div></div>
+  <div class="item" onclick="toggle(this,'s2-massage2')"><div class="check">✓</div><div class="il"><div class="iname">Шея и трапеции</div><div class="isub">5 мин. Мягкая насадка.</div></div></div>
+</div>
+
+<div class="slabel cf"><div class="dot"></div>10:20 — Приготовление еды</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-cookprep')"><div class="check">✓</div><div class="il"><div class="iname">Еда на день готова</div><div class="isub">Перекус + ужин на работу. По контейнерам.</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>10:50 — Обед</div>
+<div class="block">
+  <div class="mt">Приём 4 — ~700 ккал</div>
+  <ul class="mlist">
+    <li>Гречка или рис 150–200г</li>
+    <li>Курица / рыба / мясо 150–200г</li>
+    <li>Овощи + масло оливковое</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s2-lunch')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Обед съеден</div></div></div>
+</div>
+
+<div class="slabel cf"><div class="dot"></div>11:30 — Свободное время</div>
+<div class="free">
+  <div class="free-title">Твоё время (1.5 часа)</div>
+  <div class="free-sub">Сериал, телефон, прогулка — без задач.</div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>12:30 — Привычки</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-reading')"><div class="check">✓</div><div class="il"><div class="iname">Чтение книги</div><div class="isub">20–30 мин. Не телефон.</div></div></div>
+  <div class="item" onclick="toggle(this,'s2-journal')"><div class="check">✓</div><div class="il"><div class="iname">Дневник</div><div class="isub">10 мин. Настраиваешься на день.</div></div></div>
+</div>
+
+<div class="slabel cx"><div class="dot"></div>14:00–22:00 — Работа</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-theanine')"><div class="check">✓</div><div class="il"><div class="iname">L-теанин (если нужно)</div><div class="isub">100–200 мг при тревоге, с кофе</div></div><span class="badge bt">по потребности</span></div>
+  <div class="item" onclick="toggle(this,'s2-snack')"><div class="check">✓</div><div class="il"><div class="iname">Перекус ~16:30</div><div class="isub">Творог 200г + фрукт + орехи — ~350 ккал</div></div></div>
+  <div class="item" onclick="toggle(this,'s2-dinner-work')"><div class="check">✓</div><div class="il"><div class="iname">Ужин ~19:00</div><div class="isub">Рис/гречка + мясо/рыба + овощи — ~650 ккал</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-magnesium')"><div class="check">✓</div><div class="il"><div class="iname">Магний малат</div><div class="isub">300–400 мг после ужина</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s2-copper')"><div class="check">✓</div><div class="il"><div class="iname">Медь</div><div class="isub">1 мг после ужина</div></div><span class="badge bg2">через день</span></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>22:30 — Вечерний уход</div>
+<div class="block">
+  <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);">По дням недели</div>
+  <div class="wr"><span class="dp ba">Пн</span><span class="dp ba">Ср</span><span class="dp ba">Пт</span><span class="dl">— адапален</span></div>
+  <div class="wr"><span class="dp bt">Вт</span><span class="dp bt">Чт</span><span class="dl">— эксфолиант</span></div>
+  <div class="wr"><span class="dp bg2">Сб</span><span class="dp bg2">Вс</span><span class="dl">— умыться + крем</span></div>
+  <div class="item" onclick="toggle(this,'s2-skincare-pm')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Вечерний уход выполнен</div></div></div>
+</div>
+<div class="warn">Адапален и эксфолиант — никогда в один день.</div>
+
+<div class="slabel cp"><div class="dot"></div>22:50 — Массажган</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-massage-pm')"><div class="check">✓</div><div class="il"><div class="iname">Шея, трапеции, поясница</div><div class="isub">8–10 мин. Скорость низкая.</div></div></div>
+</div>
+
+
+<div class="slabel cp"><div class="dot"></div>23:05 — Нос и рот (вечер)</div>
+<div class="block">
+  <div class="sk"><div class="skn">👃</div><div class="skb"><div class="skname">Ксилитол (нос)</div><div class="sktip">Повторное увлажнение перед сном.</div></div></div>
+  <div class="sk"><div class="skn">🌿</div><div class="skb"><div class="skname">Масло абрикоса (нос)</div><div class="sktip">Пару капель внутри ноздрей — питание на ночь.</div></div></div>
+  <div class="sk"><div class="skn">💧</div><div class="skb"><div class="skname">Eludril (рот)</div><div class="sktip">Полоскать 30 сек после чистки зубов.</div></div></div>
+  <div class="item" onclick="toggle(this,'s2-nose-mouth-pm')"><div class="check">✓</div><div class="il"><div class="iname">Нос и рот вечер — готово</div></div></div>
+</div>
+<div class="slabel cg"><div class="dot"></div>23:00 — Поздний перекус</div>
+<div class="block">
+  <div class="mt">Приём 7 — ~350 ккал</div>
+  <ul class="mlist">
+    <li>Творог 200г жирный (5–9%)</li>
+    <li>Мёд 1 ч.л. + орехи горсть</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s2-latesnack')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Поздний перекус съеден</div></div></div>
+</div>
+
+<div class="slabel cb"><div class="dot"></div>23:10 — Перед сном</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-5htp')"><div class="check">✓</div><div class="il"><div class="iname">5-HTP</div><div class="isub">50 мг</div></div><span class="badge bp">если хуже сон — убрать</span></div>
+  <div class="item" onclick="toggle(this,'s2-glycine')"><div class="check">✓</div><div class="il"><div class="iname">Глицин <span class="new">+</span></div><div class="isub">1–3 г рассасывать</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s2-phone')"><div class="check">✓</div><div class="il"><div class="iname">Телефон убрал</div><div class="isub">За 30 мин до сна</div></div></div>
+</div>
+<div class="info">Сон 23:30 → подъём 08:00 = 8ч 30мин</div>
+
+<div class="divider"></div>
+<div class="sh">Волосы — 2–3 раза в неделю</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s2-rosemary')"><div class="check">✓</div><div class="il"><div class="iname">Масло розмарина</div><div class="isub">Перед душем. 30–60 мин, смыть.</div></div><span class="badge bg2">2–3 р/нед</span></div>
+  <div class="item" onclick="toggle(this,'s2-dermaroller')"><div class="check">✓</div><div class="il"><div class="iname">Дермароллер 0.5 мм</div><div class="isub">Отдельный день. После — масло через 24 ч.</div></div><span class="badge bg2">1 р/нед</span></div>
+</div>
+</div><!-- /s2 -->
+
+<!-- ========== ВЫХОДНЫЕ ========== -->
+<div class="shift" id="s3">
+<p class="page-sub" style="margin-top:-4px;margin-bottom:16px;">Переход: утренняя → вечерняя смена на следующей неделе</p>
+
+<div class="note" style="background:#eef4ff;color:#1a4599;">Цель выходных — плавно сдвинуть сон на 2–3 часа позже чтобы в понедельник легко войти в вечерний режим.</div>
+
+<div class="slabel co"><div class="dot"></div>Суббота — сдвиг +1.5ч</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sat-water')"><div class="check">✓</div><div class="il"><div class="iname">Подъём ~06:15</div><div class="isub">На 1.5ч позже чем обычно. Не вставать раньше — важно сдвинуть ритм.</div></div></div>
+  <div class="item" onclick="toggle(this,'s3-sat-rhodiola')"><div class="check">✓</div><div class="il"><div class="iname">Родиола + тирозин + ежовик</div><div class="isub">Натощак как обычно</div></div><span class="badge ba">5д/2 вых</span></div>
+</div>
+<div class="block">
+  <div class="sk"><div class="skn">1</div><div class="skb"><div class="skname">Умывашка</div><span class="skwait">1–2 мин</span></div></div>
+  <div class="sk"><div class="skn">2</div><div class="skb"><div class="skname">Витамин С сыворотка</div><span class="skwait">2–3 мин</span></div></div>
+  <div class="sk"><div class="skn">3</div><div class="skb"><div class="skname">Ниацинамид</div><span class="skwait">1 мин</span></div></div>
+  <div class="sk"><div class="skn">4</div><div class="skb"><div class="skname">Азелаиновая кислота</div><span class="skwait">2–3 мин</span></div></div>
+  <div class="sk"><div class="skn">5</div><div class="skb"><div class="skname">Крем</div><span class="skwait">1–2 мин</span></div></div>
+  <div class="sk"><div class="skn">6</div><div class="skb"><div class="skname">SPF 50</div><div class="sktip">Даже в выходной — обязательно.</div></div></div>
+  <div class="item" onclick="toggle(this,'s3-sat-skin-am')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Утренний уход выполнен</div></div></div>
+</div>
+<div class="block">
+  <div class="sk"><div class="skn">👃</div><div class="skb"><div class="skname">Ксилитол (нос)</div></div></div>
+  <div class="sk"><div class="skn">🌿</div><div class="skb"><div class="skname">Масло абрикоса (нос)</div></div></div>
+  <div class="sk"><div class="skn">💧</div><div class="skb"><div class="skname">Eludril (рот)</div><div class="sktip">30 сек, не есть 30 мин после.</div></div></div>
+  <div class="item" onclick="toggle(this,'s3-sat-nose-am')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Нос и рот — готово</div></div></div>
+</div>
+
+<div class="slabel co"><div class="dot"></div>06:45 — Завтрак + добавки</div>
+<div class="block">
+  <div class="mt">~700 ккал</div>
+  <ul class="mlist">
+    <li>Овсянка 80–100г + молоко</li>
+    <li>3–4 яйца</li>
+    <li>Банан или мёд</li>
+    <li>Хлеб 2 куска + арахисовое масло</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s3-sat-breakfast')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Завтрак съеден</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sat-d3')"><div class="check">✓</div><div class="il"><div class="iname">Витамин D3 + Цинк + Омега-3 + Креатин</div><div class="isub">С едой</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s3-sat-tongkat')"><div class="check">✓</div><div class="il"><div class="iname">Тонгкат Али</div><div class="isub">200 мг с едой</div></div><span class="badge ba">8нед/перерыв</span></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>Суббота — свободный день</div>
+<div class="free">
+  <div class="free-title">Твоё время — без жёсткого расписания</div>
+  <div class="free-sub">Зал, прогулка, дела, отдых — как хочешь. Главное не ложиться спать раньше 22:30.</div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>13:00 — Обед</div>
+<div class="block">
+  <div class="mt">~700 ккал</div>
+  <ul class="mlist">
+    <li>Гречка или рис 150–200г</li>
+    <li>Курица / рыба / мясо 150–200г</li>
+    <li>Овощи + масло оливковое</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s3-sat-lunch')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Обед съеден</div></div></div>
+</div>
+
+<div class="slabel cr"><div class="dot"></div>15:00 — Зал (если есть)</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sat-gym')"><div class="check">✓</div><div class="il"><div class="iname">Тренировка</div><div class="isub">60–75 мин силовая</div></div><span class="badge bg2">по желанию</span></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>18:30 — Ужин</div>
+<div class="block">
+  <div class="mt">~650 ккал</div>
+  <ul class="mlist">
+    <li>Рыба или мясо 200г</li>
+    <li>Картошка / паста / рис 150г</li>
+    <li>Салат с оливковым маслом</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s3-sat-dinner')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Ужин съеден</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sat-mag')"><div class="check">✓</div><div class="il"><div class="iname">Магний малат</div><div class="isub">300–400 мг после ужина</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s3-sat-copper')"><div class="check">✓</div><div class="il"><div class="iname">Медь</div><div class="isub">1 мг</div></div><span class="badge bg2">через день</span></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>19:30 — Вечерний уход</div>
+<div class="block">
+  <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text);">По дням недели как обычно</div>
+  <div class="wr"><span class="dp ba">Пн</span><span class="dp ba">Ср</span><span class="dp ba">Пт</span><span class="dl">— адапален</span></div>
+  <div class="wr"><span class="dp bt">Вт</span><span class="dp bt">Чт</span><span class="dl">— эксфолиант</span></div>
+  <div class="wr"><span class="dp bg2">Сб</span><span class="dp bg2">Вс</span><span class="dl">— только умыться + крем</span></div>
+  <div class="item" onclick="toggle(this,'s3-sat-skin-pm')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Вечерний уход выполнен</div></div></div>
+</div>
+<div class="warn">Адапален и эксфолиант — никогда в один день.</div>
+
+<div class="slabel cp"><div class="dot"></div>20:00 — Нос и рот (вечер)</div>
+<div class="block">
+  <div class="sk"><div class="skn">👃</div><div class="skb"><div class="skname">Ксилитол (нос)</div></div></div>
+  <div class="sk"><div class="skn">🌿</div><div class="skb"><div class="skname">Масло абрикоса (нос)</div></div></div>
+  <div class="sk"><div class="skn">💧</div><div class="skb"><div class="skname">Eludril (рот)</div><div class="sktip">После чистки зубов.</div></div></div>
+  <div class="item" onclick="toggle(this,'s3-sat-nose-pm')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Нос и рот вечер — готово</div></div></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>20:30 — Привычки</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sat-read')"><div class="check">✓</div><div class="il"><div class="iname">Чтение книги</div><div class="isub">30–45 мин</div></div></div>
+  <div class="item" onclick="toggle(this,'s3-sat-journal')"><div class="check">✓</div><div class="il"><div class="iname">Дневник</div><div class="isub">10–15 мин</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>21:30 — Поздний перекус</div>
+<div class="block">
+  <div class="mt">~350 ккал</div>
+  <ul class="mlist">
+    <li>Творог 200г жирный + мёд + орехи</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s3-sat-latesnack')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Перекус съеден</div></div></div>
+</div>
+
+<div class="slabel cb"><div class="dot"></div>22:00 — Перед сном</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sat-5htp')"><div class="check">✓</div><div class="il"><div class="iname">5-HTP</div><div class="isub">50 мг</div></div><span class="badge bp">если хуже сон — убрать</span></div>
+  <div class="item" onclick="toggle(this,'s3-sat-glycine')"><div class="check">✓</div><div class="il"><div class="iname">Глицин</div><div class="isub">1–3 г</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s3-sat-phone')"><div class="check">✓</div><div class="il"><div class="iname">Телефон убрал</div><div class="isub">За 30 мин до сна</div></div></div>
+</div>
+<div class="info">Суббота: сон ~22:30 → подъём ~08:00 (воскресенье). Сдвигаемся на 2ч позже.</div>
+
+<div class="divider"></div>
+
+<div class="slabel co"><div class="dot"></div>Воскресенье — финальный сдвиг</div>
+<div class="note" style="background:#eef4ff;color:#1a4599;">Сегодня сдвигаем ещё на 1–1.5ч. Цель: лечь ~23:30–00:00 чтобы в понедельник встать в 08:00 для вечерней смены.</div>
+
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sun-wake')"><div class="check">✓</div><div class="il"><div class="iname">Подъём ~08:00</div><div class="isub">Не раньше. Дать организму привыкнуть к новому времени.</div></div></div>
+  <div class="item" onclick="toggle(this,'s3-sun-supps')"><div class="check">✓</div><div class="il"><div class="iname">Родиола + тирозин + ежовик</div><div class="isub">Натощак как обычно</div></div><span class="badge ba">5д/2 вых</span></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>08:30 — Завтрак + добавки</div>
+<div class="block">
+  <div class="mt">~700 ккал — как обычно</div>
+  <div class="item" onclick="toggle(this,'s3-sun-breakfast')" style="margin-top:8px;"><div class="check">✓</div><div class="il"><div class="iname">Завтрак + D3 + Цинк + Омега-3 + Креатин</div></div></div>
+</div>
+
+<div class="slabel cf"><div class="dot"></div>09:00 — Уход + нос и рот</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sun-skin')"><div class="check">✓</div><div class="il"><div class="iname">Утренний уход лица</div><div class="isub">Витамин С → Ниацинамид → Азелаиновая → Крем → SPF 50</div></div></div>
+  <div class="item" onclick="toggle(this,'s3-sun-nose')"><div class="check">✓</div><div class="il"><div class="iname">Ксилитол + масло абрикоса + Eludril</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>Воскресенье — свободный день</div>
+<div class="free">
+  <div class="free-title">Твоё время</div>
+  <div class="free-sub">Отдых, дела, прогулка. Хорошо выйти на улицу днём — солнечный свет помогает перестроить ритм.</div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>14:00 — Meal prep на неделю (по желанию)</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sun-mealprep')"><div class="check">✓</div><div class="il"><div class="iname">Приготовить еду на 3–4 дня</div><div class="isub">Рис/гречка + куриные грудки + овощи в контейнеры. 1.5–2 часа — экономишь всю неделю.</div></div><span class="badge bg2">по желанию</span></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>19:00 — Ужин</div>
+<div class="block">
+  <div class="mt">~650 ккал</div>
+  <ul class="mlist">
+    <li>Рыба или мясо 200г</li>
+    <li>Картошка / паста / рис 150г</li>
+    <li>Салат с маслом</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s3-sun-dinner')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Ужин съеден</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sun-mag')"><div class="check">✓</div><div class="il"><div class="iname">Магний малат</div><div class="isub">300–400 мг после ужина</div></div><span class="badge bt">ежедневно</span></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>20:00 — Вечерний уход + нос и рот</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sun-skin-pm')"><div class="check">✓</div><div class="il"><div class="iname">Вечерний уход лица</div><div class="isub">По расписанию дня недели</div></div></div>
+  <div class="item" onclick="toggle(this,'s3-sun-nose-pm')"><div class="check">✓</div><div class="il"><div class="iname">Ксилитол + масло абрикоса + Eludril</div></div></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>21:00 — Привычки</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sun-read')"><div class="check">✓</div><div class="il"><div class="iname">Чтение книги</div><div class="isub">30–45 мин</div></div></div>
+  <div class="item" onclick="toggle(this,'s3-sun-journal')"><div class="check">✓</div><div class="il"><div class="iname">Дневник</div><div class="isub">Планируешь неделю, ставишь цели</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>22:30 — Поздний перекус</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sun-latesnack')"><div class="check">✓</div><div class="il"><div class="iname">Творог 200г + мёд + орехи</div><div class="isub">~350 ккал</div></div></div>
+</div>
+
+<div class="slabel cb"><div class="dot"></div>23:00 — Перед сном</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-sun-5htp')"><div class="check">✓</div><div class="il"><div class="iname">5-HTP 50 мг</div></div><span class="badge bp">если хуже сон — убрать</span></div>
+  <div class="item" onclick="toggle(this,'s3-sun-glycine')"><div class="check">✓</div><div class="il"><div class="iname">Глицин 1–3 г</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s3-sun-phone')"><div class="check">✓</div><div class="il"><div class="iname">Телефон убрал</div></div></div>
+</div>
+<div class="info">Воскресенье: сон ~23:30 → подъём 08:00 в понедельник. Готов к вечерней смене.</div>
+
+<div class="divider"></div>
+<div class="sh">Волосы — в выходные удобнее всего</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s3-rosemary')"><div class="check">✓</div><div class="il"><div class="iname">Масло розмарина</div><div class="isub">Перед душем. 30–60 мин, смыть.</div></div><span class="badge bg2">2–3 р/нед</span></div>
+  <div class="item" onclick="toggle(this,'s3-dermaroller')"><div class="check">✓</div><div class="il"><div class="iname">Дермароллер 0.5 мм</div><div class="isub">Отдельный день. После — масло через 24 ч.</div></div><span class="badge bg2">1 р/нед</span></div>
+</div>
+
+</div><!-- /s3 -->
+
+<!-- ========== ВЫХОДНЫЕ смена 2→1 ========== -->
+<div class="shift" id="s4">
+<p class="page-sub" style="margin-top:-4px;margin-bottom:16px;">Переход: вечерняя → утренняя смена на следующей неделе</p>
+
+<div class="note" style="background:#fff4e0;color:#8c5000;">Это самый тяжёлый переход — нужно встать намного раньше. Главное правило: не пытайся лечь раньше насильно — не заснёшь. Используй свет, усталость и добавки.</div>
+
+<div class="slabel co"><div class="dot"></div>Суббота — начинаем сдвиг назад</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sat-wake')"><div class="check">✓</div><div class="il"><div class="iname">Подъём ~09:00</div><div class="isub">Раньше обычного на 1–1.5ч. Сигнал организму — начинаем сдвиг.</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sat-light')"><div class="check">✓</div><div class="il"><div class="iname">Яркий свет сразу после подъёма</div><div class="isub">Выйди на улицу или сядь у окна на 15–20 мин. Сбрасывает мелатонин и перезапускает внутренние часы.</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sat-supps')"><div class="check">✓</div><div class="il"><div class="iname">Родиола + тирозин + ежовик</div><div class="isub">Натощак как обычно</div></div><span class="badge ba">5д/2 вых</span></div>
+</div>
+
+<div class="slabel co"><div class="dot"></div>09:30 — Завтрак + уход</div>
+<div class="block">
+  <div class="mt">~700 ккал как обычно</div>
+  <div class="item" onclick="toggle(this,'s4-sat-breakfast')" style="margin-top:8px;"><div class="check">✓</div><div class="il"><div class="iname">Завтрак + D3 + Цинк + Омега-3 + Креатин</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sat-skin')"><div class="check">✓</div><div class="il"><div class="iname">Утренний уход лица</div><div class="isub">Витамин С → Ниацинамид → Азелаиновая → Крем → SPF 50</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sat-nose')"><div class="check">✓</div><div class="il"><div class="iname">Ксилитол + масло абрикоса + Eludril</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>Суббота — активный день</div>
+<div class="free">
+  <div class="free-title">Держись активным весь день</div>
+  <div class="free-sub">Прогулка, зал, дела — чем устанешь больше, тем легче лечь раньше вечером. Избегай дневного сна.</div>
+</div>
+
+<div class="slabel cr"><div class="dot"></div>13:00 — Зал (рекомендуется)</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sat-gym')"><div class="check">✓</div><div class="il"><div class="iname">Тренировка 60–75 мин</div><div class="isub">Физическая усталость помогает уснуть раньше вечером.</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>14:30 — После зала</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sat-protein')"><div class="check">✓</div><div class="il"><div class="iname">Протеин 1 порция + банан</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>18:00 — Ужин</div>
+<div class="block">
+  <div class="mt">~650 ккал</div>
+  <ul class="mlist">
+    <li>Рыба или мясо 200г</li>
+    <li>Рис / гречка 150г</li>
+    <li>Овощи с маслом</li>
+  </ul>
+  <div class="item" onclick="toggle(this,'s4-sat-dinner')" style="margin-top:8px;border-top:1px solid var(--border);"><div class="check">✓</div><div class="il"><div class="iname">Ужин съеден</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sat-mag')"><div class="check">✓</div><div class="il"><div class="iname">Магний малат 300–400 мг</div></div><span class="badge bt">ежедневно</span></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>19:00 — Вечерний уход + нос и рот</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sat-skin-pm')"><div class="check">✓</div><div class="il"><div class="iname">Вечерний уход лица</div><div class="isub">По расписанию дня</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sat-nose-pm')"><div class="check">✓</div><div class="il"><div class="iname">Ксилитол + масло абрикоса + Eludril</div></div></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>19:30 — Привычки</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sat-read')"><div class="check">✓</div><div class="il"><div class="iname">Чтение книги</div><div class="isub">30 мин — тихое занятие помогает успокоиться</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sat-journal')"><div class="check">✓</div><div class="il"><div class="iname">Дневник</div><div class="isub">10 мин</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>20:00 — Поздний перекус</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sat-latesnack')"><div class="check">✓</div><div class="il"><div class="iname">Творог 200г + мёд + орехи</div><div class="isub">~350 ккал. Казеин на ночь.</div></div></div>
+</div>
+
+<div class="slabel cb"><div class="dot"></div>20:15 — Перед сном (раньше обычного)</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sat-5htp')"><div class="check">✓</div><div class="il"><div class="iname">5-HTP 50 мг</div><div class="isub">Сегодня особенно важен — помогает уснуть раньше</div></div><span class="badge bp">если хуже сон — убрать</span></div>
+  <div class="item" onclick="toggle(this,'s4-sat-glycine')"><div class="check">✓</div><div class="il"><div class="iname">Глицин 1–3 г</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s4-sat-phone')"><div class="check">✓</div><div class="il"><div class="iname">Телефон убрал и экран приглушил</div><div class="isub">Синий свет сдвигает сон позже — убрать за час до сна</div></div></div>
+</div>
+<div class="info">Суббота: лечь ~20:30–21:00 → подъём ~05:00 воскресенье. Тяжело но нужно.</div>
+
+<div class="divider"></div>
+
+<div class="slabel co"><div class="dot"></div>Воскресенье — финальная подготовка</div>
+<div class="note" style="background:#fff4e0;color:#8c5000;">Сегодня встаёшь почти как в рабочий день смены 1. Если проснулся сам раньше 05:30 — хороший знак, организм перестроился.</div>
+
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-wake')"><div class="check">✓</div><div class="il"><div class="iname">Подъём ~05:00–05:30</div><div class="isub">Сразу яркий свет — выйди на улицу или включи максимальный свет в квартире.</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sun-water')"><div class="check">✓</div><div class="il"><div class="iname">Выпить воду 300–500 мл</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sun-supps')"><div class="check">✓</div><div class="il"><div class="iname">Родиола + тирозин + ежовик</div><div class="isub">Натощак — помогают взбодриться при раннем подъёме</div></div><span class="badge ba">5д/2 вых</span></div>
+</div>
+
+<div class="slabel co"><div class="dot"></div>05:15 — Уход + завтрак</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-skin')"><div class="check">✓</div><div class="il"><div class="iname">Душ + утренний уход лица</div><div class="isub">Витамин С → Ниацинамид → Азелаиновая → Крем → SPF 50</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sun-nose')"><div class="check">✓</div><div class="il"><div class="iname">Ксилитол + масло абрикоса + Eludril</div></div></div>
+</div>
+<div class="block">
+  <div class="mt">~700 ккал как обычно</div>
+  <div class="item" onclick="toggle(this,'s4-sun-breakfast')" style="margin-top:8px;"><div class="check">✓</div><div class="il"><div class="iname">Завтрак + D3 + Цинк + Омега-3 + Креатин</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>Воскресенье — спокойный день</div>
+<div class="free">
+  <div class="free-title">Лёгкий день — без стресса</div>
+  <div class="free-sub">Прогулка, дела, готовка еды на неделю. Не перегружай — завтра на работу в 06:00.</div>
+</div>
+
+<div class="slabel cf"><div class="dot"></div>10:00 — Meal prep (рекомендуется)</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-mealprep')"><div class="check">✓</div><div class="il"><div class="iname">Готовка еды на 3–4 дня</div><div class="isub">Рис/гречка + курица + овощи в контейнеры. Сэкономишь 20–30 мин каждый вечер.</div></div><span class="badge bg2">по желанию</span></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>12:00 — Обед</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-lunch')"><div class="check">✓</div><div class="il"><div class="iname">Гречка/рис + белок + овощи — ~700 ккал</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>17:00 — Ужин</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-dinner')"><div class="check">✓</div><div class="il"><div class="iname">Рыба/мясо + гарнир + овощи — ~650 ккал</div></div></div>
+</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-mag')"><div class="check">✓</div><div class="il"><div class="iname">Магний малат 300–400 мг</div></div><span class="badge bt">ежедневно</span></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>18:00 — Вечерний уход + нос и рот</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-skin-pm')"><div class="check">✓</div><div class="il"><div class="iname">Вечерний уход лица</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sun-nose-pm')"><div class="check">✓</div><div class="il"><div class="iname">Ксилитол + масло абрикоса + Eludril</div></div></div>
+</div>
+
+<div class="slabel cp"><div class="dot"></div>18:30 — Привычки</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-read')"><div class="check">✓</div><div class="il"><div class="iname">Чтение книги</div><div class="isub">30 мин</div></div></div>
+  <div class="item" onclick="toggle(this,'s4-sun-journal')"><div class="check">✓</div><div class="il"><div class="iname">Дневник</div><div class="isub">Планируешь неделю</div></div></div>
+</div>
+
+<div class="slabel cg"><div class="dot"></div>19:00 — Поздний перекус</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-latesnack')"><div class="check">✓</div><div class="il"><div class="iname">Творог 200г + мёд + орехи — ~350 ккал</div></div></div>
+</div>
+
+<div class="slabel cb"><div class="dot"></div>19:30 — Перед сном</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-sun-5htp')"><div class="check">✓</div><div class="il"><div class="iname">5-HTP 50 мг</div></div><span class="badge bp">если хуже сон — убрать</span></div>
+  <div class="item" onclick="toggle(this,'s4-sun-glycine')"><div class="check">✓</div><div class="il"><div class="iname">Глицин 1–3 г</div></div><span class="badge bt">ежедневно</span></div>
+  <div class="item" onclick="toggle(this,'s4-sun-phone')"><div class="check">✓</div><div class="il"><div class="iname">Телефон убрал</div></div></div>
+</div>
+<div class="info">Воскресенье: сон ~20:00 → подъём 04:45 в понедельник. Готов к утренней смене.</div>
+
+<div class="divider"></div>
+<div class="sh">Волосы — удобно в выходной</div>
+<div class="block">
+  <div class="item" onclick="toggle(this,'s4-rosemary')"><div class="check">✓</div><div class="il"><div class="iname">Масло розмарина</div><div class="isub">Перед душем. 30–60 мин, смыть.</div></div><span class="badge bg2">2–3 р/нед</span></div>
+  <div class="item" onclick="toggle(this,'s4-dermaroller')"><div class="check">✓</div><div class="il"><div class="iname">Дермароллер 0.5 мм</div><div class="isub">Отдельный день. После — масло через 24 ч.</div></div><span class="badge bg2">1 р/нед</span></div>
+</div>
+
+</div><!-- /s4 -->
+
+
+<div style="margin-top:16px;">
+  <button class="reset-btn" onclick="resetDay()">Сбросить галочки на сегодня</button>
+</div>
+
+</div><!-- /v-schedule -->
+
+<!-- ===================== CALENDAR VIEW ===================== -->
+<div class="view" id="v-calendar">
+  <div class="block">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrev()">‹</button>
+      <div class="cal-title" id="cal-title"></div>
+      <button class="cal-nav" onclick="calNext()">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend" style="margin-top:12px;">
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#18a06b;"></div>100%</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#a0dfc0;"></div>Частично</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:var(--bg2);border:1px solid var(--border2);"></div>Нет данных</div>
+    </div>
+  </div>
+  <div class="block" id="cal-day-detail" style="display:none;">
+    <div id="cal-day-detail-content"></div>
+  </div>
+</div>
+
+<div style="height:36px;"></div>
+
+<script>
+// ─── Telegram init ───
+if (window.Telegram && window.Telegram.WebApp) {
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+}
+
+// ─── State ───
+let currentShift = 's1';
+let calYear, calMonth;
+const today = new Date();
+calYear = today.getFullYear();
+calMonth = today.getMonth();
+
+function todayKey() {
+  return today.toISOString().slice(0,10);
+}
+
+function getStorage() {
+  try { return JSON.parse(localStorage.getItem('schedule_data') || '{}'); } catch(e) { return {}; }
+}
+function saveStorage(data) {
+  try { localStorage.setItem('schedule_data', JSON.stringify(data)); } catch(e) {}
+}
+
+// ─── Auto-reset: if stored day != today, wipe checked items for today ───
+function checkDayReset() {
+  const data = getStorage();
+  const tk = todayKey();
+  if (!data[tk]) data[tk] = { checked: {}, total: 0, done: 0 };
+  saveStorage(data);
+}
+checkDayReset();
+
+// ─── Toggle ───
+function toggle(el, key) {
+  el.classList.toggle('done');
+  const isDone = el.classList.contains('done');
+  const data = getStorage();
+  const tk = todayKey();
+  if (!data[tk]) data[tk] = { checked: {}, total: 0, done: 0 };
+  data[tk].checked[key] = isDone;
+  saveStorage(data);
+  updateProgress();
+}
+
+// ─── Restore checkboxes from storage ───
+function restoreChecks() {
+  const data = getStorage();
+  const tk = todayKey();
+  if (!data[tk]) return;
+  const checked = data[tk].checked || {};
+  document.querySelectorAll('.item[onclick]').forEach(el => {
+    const match = el.getAttribute('onclick').match(/toggle\(this,'([^']+)'\)/);
+    if (match) {
+      const key = match[1];
+      if (checked[key]) el.classList.add('done');
+      else el.classList.remove('done');
+    }
+  });
+  updateProgress();
+}
+
+// ─── Progress ───
+function updateProgress() {
+  const items = document.querySelectorAll('#' + currentShift + ' .item[onclick]');
+  const total = items.length;
+  let done = 0;
+  items.forEach(el => { if (el.classList.contains('done')) done++; });
+
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+
+  const days = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  document.getElementById('progress-date').textContent =
+    days[today.getDay()] + ', ' + today.getDate() + ' ' + months[today.getMonth()];
+
+  // Save to storage
+  const data = getStorage();
+  const tk = todayKey();
+  if (!data[tk]) data[tk] = { checked: {}, total: 0, done: 0 };
+  data[tk].total = total;
+  data[tk].done = done;
+  saveStorage(data);
+}
+
+// ─── Reset ───
+function resetDay() {
+  if (!confirm('Сбросить все галочки на сегодня?')) return;
+  const data = getStorage();
+  const tk = todayKey();
+  data[tk] = { checked: {}, total: 0, done: 0 };
+  saveStorage(data);
+  document.querySelectorAll('.item').forEach(el => el.classList.remove('done'));
+  updateProgress();
+}
+
+// ─── Shift switch ───
+function swShift(id, btn) {
+  document.querySelectorAll('.shift').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.stab').forEach(b => { b.classList.remove('on'); b.classList.add('off'); });
+  document.getElementById(id).classList.add('on');
+  btn.classList.add('on'); btn.classList.remove('off');
+  currentShift = id;
+  restoreChecks();
+  updateProgress();
+}
+
+// ─── View switch ───
+function swView(id, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+  document.querySelectorAll('.itab').forEach(b => { b.classList.remove('on'); b.classList.add('off'); });
+  document.getElementById('v-' + id).classList.add('on');
+  btn.classList.add('on'); btn.classList.remove('off');
+  if (id === 'calendar') renderCal();
+}
+
+// ─── Calendar ───
+const MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const DAYS_RU = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCal(); }
+function calNext() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCal(); }
+
+function renderCal() {
+  document.getElementById('cal-title').textContent = MONTHS_RU[calMonth] + ' ' + calYear;
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  DAYS_RU.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-name';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const offset = (firstDay === 0) ? 6 : firstDay - 1;
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const data = getStorage();
+
+  for (let i = 0; i < offset; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement('div');
+    const dateStr = calYear + '-' + String(calMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const isToday = (dateStr === todayKey());
+    const dayData = data[dateStr];
+    let cls = 'cal-day';
+    if (isToday) cls += ' today';
+    if (dayData && dayData.total > 0) {
+      const pct = dayData.done / dayData.total;
+      if (pct >= 1) cls += ' full';
+      else if (pct > 0) cls += ' partial';
+      else cls += ' zero';
+      el.onclick = () => showDayDetail(dateStr, dayData);
+      cls += ' has-data';
+    }
+    el.className = cls;
+    el.textContent = d;
+    grid.appendChild(el);
+  }
+}
+
+function showDayDetail(dateStr, dayData) {
+  const detail = document.getElementById('cal-day-detail');
+  const content = document.getElementById('cal-day-detail-content');
+  const pct = dayData.total ? Math.round(dayData.done / dayData.total * 100) : 0;
+  content.innerHTML = `
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">${dateStr}</div>
+    <div style="font-size:13px;color:var(--text2);">Выполнено: <b style="color:#18a06b;">${dayData.done}</b> из <b>${dayData.total}</b> пунктов (${pct}%)</div>
+    <div class="progress-bar-bg" style="margin-top:8px;"><div class="progress-bar" style="width:${pct}%"></div></div>
+  `;
+  detail.style.display = 'block';
+}
+
+// ─── Init ───
+restoreChecks();
+updateProgress();
+</script>
+
+<div style="position:fixed;bottom:20px;right:16px;z-index:999;">
+  <a href="tracker.html" style="display:flex;align-items:center;gap:8px;background:#1a1a1a;color:#fff;text-decoration:none;padding:12px 18px;border-radius:50px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,0.25);">
+    💪 Трекер
+  </a>
+</div>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+</script>
+
+
+</div>
+
+
+  
+
+  
+
+  <div style="height:16px;"></div>
+</div>
+
+<script>
+
+// ===== WORK TRACKER =====
+let wYear = new Date().getFullYear();
+let wMonth = new Date().getMonth();
+let wSelectedDay = null;
+
+const W_MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const W_DAYS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+function wCalPrev(){ wMonth--; if(wMonth<0){wMonth=11;wYear--;} renderWCal(); }
+function wCalNext(){ wMonth++; if(wMonth>11){wMonth=0;wYear++;} renderWCal(); }
+
+function getWData(){
+  try{ return JSON.parse(localStorage.getItem('work_data')||'{}'); }catch(e){ return {}; }
+}
+function saveWData(d){ localStorage.setItem('work_data', JSON.stringify(d)); }
+
+function saveWSettings(){
+  const d = getWData();
+  const rateVal = parseFloat(document.getElementById('w-rate-input').value);
+  const stdVal = parseFloat(document.getElementById('w-std-hours').value);
+  const targetVal = parseFloat(document.getElementById('w-target-hours').value);
+
+  if(!isNaN(rateVal) && rateVal > 0) d.rate = rateVal;
+  if(!isNaN(stdVal) && stdVal > 0) d.stdHours = stdVal;
+  if(!isNaN(targetVal) && targetVal > 0) d.targetHours = targetVal;
+
+  saveWData(d);
+  renderWCal();
+}
+
+function loadWSettings(){
+  const d = getWData();
+  const rate = d.rate != null ? d.rate : 31;
+  const stdH = d.stdHours != null ? d.stdHours : 8;
+  const targetH = d.targetHours != null ? d.targetHours : 180;
+
+  document.getElementById('w-rate-input').value = rate;
+  document.getElementById('w-std-hours').value = stdH;
+  document.getElementById('w-target-hours').value = targetH;
+
+}
+
+function wKey(y,m,day){ return y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'); }
+
+function renderWCal(){
+  document.getElementById('w-month-title').textContent = W_MONTHS[wMonth]+' '+wYear;
+  const d = getWData();
+  const rate = d.rate != null ? d.rate : 31;
+  const stdH = d.stdHours != null ? d.stdHours : 8;
+  const days = d.days||{};
+
+  // Day names
+  const namesEl = document.getElementById('w-day-names');
+  namesEl.innerHTML = W_DAYS.map(n=>`<div class="day-name-w">${n}</div>`).join('');
+
+  const firstDay = new Date(wYear, wMonth, 1).getDay();
+  const offset = firstDay===0 ? 6 : firstDay-1;
+  const daysInMonth = new Date(wYear, wMonth+1, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  const grid = document.getElementById('w-cal-grid');
+  let html = '';
+  for(let i=0;i<offset;i++) html += '<div class="day-cell empty"></div>';
+
+  let plannedDays=0, workedDays=0, plannedHours=0, workedHours=0, earnedTotal=0;
+
+  for(let day=1;day<=daysInMonth;day++){
+    const key = wKey(wYear,wMonth,day);
+    const date = new Date(wYear,wMonth,day);
+    const dow = date.getDay(); // 0=sun, 6=sat
+    const isWeekend = dow===0||dow===6;
+    const isPast = key<todayStr;
+    const isToday = key===todayStr;
+    const dayData = days[key];
+
+    let cls = 'day-cell';
+    if(isToday) cls += ' today-w';
+    let hoursLabel = '';
+    let hours = 0;
+
+    if(dayData){
+      if(dayData.type==='work'){
+        hours = dayData.hours||stdH;
+        cls += isPast||isToday ? ' past-work' : ' workday';
+        workedDays++;
+        workedHours+=hours;
+        earnedTotal+=hours*rate;
+        hoursLabel = hours!==stdH ? `<span class="hours-badge">${hours}</span>` : '';
+      } else if(dayData.type==='extra'){
+        hours = dayData.hours||stdH;
+        cls += isPast||isToday ? ' past-extra' : ' extra';
+        workedDays++;
+        workedHours+=hours;
+        earnedTotal+=hours*rate;
+        hoursLabel = `<span class="hours-badge">${hours}</span>`;
+      } else if(dayData.type==='off'){
+        cls += ' off';
+      }
+    } else if(!isWeekend){
+      // Default: planned workday
+      if(!isPast){
+        cls += ' workday';
+        plannedDays++;
+        plannedHours+=stdH;
+      }
+    } else {
+      cls += ' weekend';
+    }
+
+    html += `<div class="${cls}" onclick="wDayClick('${key}',${day})">${day}${hoursLabel}</div>`;
+  }
+  grid.innerHTML = html;
+
+  // Totals
+  const targetHours = d.targetHours != null ? d.targetHours : 180;
+  const extraRate = rate; // та же ставка
+  const remainHours = Math.max(0, targetHours - workedHours);
+  const totalPlannedEarn = earnedTotal + plannedHours*rate;
+  const totalDays = workedDays + plannedDays;
+
+  // Сверхурочные
+  let overtimeHours = 0, overtimeEarn = 0;
+  Object.values(days).forEach(day => {
+    if(day.type==='extra') {
+      const h = day.hours||(d.stdHours != null ? d.stdHours : 8);
+      overtimeHours += h;
+      overtimeEarn += h * extraRate;
+    }
+  });
+  const overtimeBonus = 0;
+
+  document.getElementById('w-earned').textContent = Math.round(earnedTotal).toLocaleString('ru') + ' zł';
+  document.getElementById('w-earned-sub').textContent = workedHours >= targetHours
+    ? '✅ Цель по часам выполнена!'
+    : 'заработано этот месяц';
+  document.getElementById('w-hours-done').textContent = workedHours + 'ч';
+  document.getElementById('w-hours-plan').textContent = remainHours + 'ч';
+  document.getElementById('w-days-done').textContent = workedDays;
+  document.getElementById('w-days-plan').textContent = plannedDays;
+  document.getElementById('w-rate-show').textContent = rate + ' zł/ч';
+
+  document.getElementById('w-target-money').textContent = Math.round(targetHours*rate).toLocaleString('ru') + ' zł';
+  document.getElementById('w-target-hours-show').textContent = targetHours + 'ч';
+
+  // Прогресс часов
+  const hoursPct = targetHours>0 ? Math.min(100, Math.round(workedHours/targetHours*100)) : 0;
+  document.getElementById('w-progress-fill').style.width = hoursPct+'%';
+  document.getElementById('w-progress-pct').textContent = hoursPct+'%';
+
+  // Прогресс денег
+  const targetMoney = targetHours * rate;
+  const moneyPct = targetMoney>0 ? Math.min(100, Math.round(earnedTotal/targetMoney*100)) : 0;
+  document.getElementById('w-money-fill').style.width = moneyPct+'%';
+  document.getElementById('w-money-pct').textContent = moneyPct+'%';
+
+  // Сверхурочные блок
+  const otBlock = document.getElementById('w-overtime-block');
+  if(overtimeHours > 0) {
+    otBlock.style.display = 'block';
+    document.getElementById('w-overtime-hours').textContent = overtimeHours + 'ч';
+    document.getElementById('w-overtime-earn').textContent = Math.round(overtimeEarn).toLocaleString('ru') + ' zł';
+
+  } else {
+    otBlock.style.display = 'none';
+  }
+
+  // Forecast
+  const forecastEl = document.getElementById('w-forecast');
+  const projectedTotal = earnedTotal + plannedHours * rate;
+  const projectedHours = workedHours + plannedHours;
+  const hoursShortfall = Math.max(0, targetHours - projectedHours);
+  if(plannedDays===0){
+    forecastEl.innerHTML = '<div style="font-size:13px;color:var(--text3);">Все дни месяца уже отмечены.</div>';
+  } else {
+    forecastEl.innerHTML = `
+      <div style="font-size:13px;color:var(--text2);line-height:2;">
+        Осталось дней: <b>${plannedDays}</b> · Часов: <b>${plannedHours}ч</b><br>
+        Заработаешь ещё: <b style="color:var(--green);">${Math.round(plannedHours*rate).toLocaleString('ru')} zł</b><br>
+        Итого за месяц: <b style="color:var(--green);font-size:15px;">${Math.round(projectedTotal).toLocaleString('ru')} zł</b><br>
+        ${hoursShortfall>0
+          ? `<span style="color:var(--oranged);">⚠ Не хватает ${hoursShortfall}ч до цели (${targetHours}ч)</span>`
+          : `<span style="color:var(--green);">✅ Цель по часам будет выполнена</span>`
+        }
+      </div>
+    `;
+  }
+}
+
+function wDayClick(key, day){
+  wSelectedDay = key;
+  const d = getWData();
+  const dayData = (d.days||{})[key];
+  const date = new Date(wYear, wMonth, day);
+  const dow = date.getDay();
+  const dayNames = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  document.getElementById('w-popup-title').textContent = dayNames[dow]+', '+day+' '+W_MONTHS[wMonth];
+
+  const typeEl = document.getElementById('w-day-type');
+  const hoursEl = document.getElementById('w-day-hours');
+  const stdH = d.stdHours != null ? d.stdHours : 8;
+
+  if(dayData){
+    typeEl.value = dayData.type||'work';
+    hoursEl.value = dayData.hours||stdH;
+  } else {
+    // defaults
+    if(dow===0||dow===6) typeEl.value='off';
+    else typeEl.value='work';
+    hoursEl.value = stdH;
+  }
+  wDayTypeChange();
+  document.getElementById('w-day-popup').style.display='block';
+  document.getElementById('w-day-popup').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function wDayTypeChange(){
+  const type = document.getElementById('w-day-type').value;
+  document.getElementById('w-hours-wrap').style.display = type==='off' ? 'none' : 'block';
+}
+
+function saveWDay(){
+  if(!wSelectedDay) return;
+  const d = getWData();
+  if(!d.days) d.days={};
+  const type = document.getElementById('w-day-type').value;
+  const hours = parseFloat(document.getElementById('w-day-hours').value)||d.stdHours != null ? d.stdHours : 8;
+  if(type==='off'){
+    d.days[wSelectedDay]={type:'off'};
+  } else {
+    d.days[wSelectedDay]={type,hours};
+  }
+  saveWData(d);
+  document.getElementById('w-day-popup').style.display='none';
+  renderWCal();
+}
+
+// Init work tracker when switching to it
+function initWorkTracker(){
+  // Первый запуск — записать дефолты если их нет
+  const d = getWData();
+  if(d.rate == null) d.rate = 31;
+  if(d.stdHours == null) d.stdHours = 8;
+  if(d.targetHours == null) d.targetHours = 180;
+
+  saveWData(d);
+  loadWSettings();
+  renderWCal();
+}
+
+</script>
+
+<div style="position:fixed;bottom:20px;left:16px;z-index:999;">
+  <a href="index.html" style="display:flex;align-items:center;gap:8px;background:#1a1a1a;color:#fff;text-decoration:none;padding:12px 18px;border-radius:50px;font-family:Manrope,sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,0.25);">
+    ← Расписание
+  </a>
+</div>
+
+
+</div>
+</div>
+
+<style>
+.page { display: none; }
+.page.active { display: block; }
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border2);
+  display: flex;
+  z-index: 9999;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px; padding: 10px 4px;
+  border: none; background: none; cursor: pointer;
+  font-family: Manrope, sans-serif; font-size: 10px; font-weight: 700;
+  color: var(--text3); transition: color .15s;
+}
+.nav-btn.on { color: var(--green); }
+.nav-btn .nav-icon { font-size: 20px; line-height: 1; }
+body { padding-bottom: 70px; }
+</style>
+
+<div class="bottom-nav">
+  <button class="nav-btn on" id="nav-schedule" onclick="goPage('schedule')">
+    <span class="nav-icon">📋</span>Расписание
+  </button>
+  <button class="nav-btn" id="nav-work" onclick="goPage('work')">
+    <span class="nav-icon">💰</span>Работа
+  </button>
+</div>
+
+<script>
+function goPage(name) {
+  document.querySelectorAll('.bottom-nav .nav-btn').forEach(b => b.classList.remove('on'));
+  document.getElementById('nav-' + name).classList.add('on');
+
+  const scheduleWrap = document.getElementById('schedule-wrap');
+  const workWrap = document.getElementById('page-work');
+
+  scheduleWrap.style.display = 'none';
+  workWrap.style.display = 'none';
+
+  if (name === 'schedule') {
+    scheduleWrap.style.display = 'block';
+  } else if (name === 'work') {
+    workWrap.style.display = 'block';
+    initWorkTracker();
+  }
+}
+</script>
+
+<script>
+
+
+// ===== WORK TRACKER =====
+let wYear = new Date().getFullYear();
+let wMonth = new Date().getMonth();
+let wSelectedDay = null;
+
+const W_MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const W_DAYS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+function wCalPrev(){ wMonth--; if(wMonth<0){wMonth=11;wYear--;} renderWCal(); }
+function wCalNext(){ wMonth++; if(wMonth>11){wMonth=0;wYear++;} renderWCal(); }
+
+function getWData(){
+  try{ return JSON.parse(localStorage.getItem('work_data')||'{}'); }catch(e){ return {}; }
+}
+function saveWData(d){ localStorage.setItem('work_data', JSON.stringify(d)); }
+
+function saveWSettings(){
+  const d = getWData();
+  const rateVal = parseFloat(document.getElementById('w-rate-input').value);
+  const stdVal = parseFloat(document.getElementById('w-std-hours').value);
+  const targetVal = parseFloat(document.getElementById('w-target-hours').value);
+
+  if(!isNaN(rateVal) && rateVal > 0) d.rate = rateVal;
+  if(!isNaN(stdVal) && stdVal > 0) d.stdHours = stdVal;
+  if(!isNaN(targetVal) && targetVal > 0) d.targetHours = targetVal;
+
+  saveWData(d);
+  renderWCal();
+}
+
+function loadWSettings(){
+  const d = getWData();
+  const rate = d.rate != null ? d.rate : 31;
+  const stdH = d.stdHours != null ? d.stdHours : 8;
+  const targetH = d.targetHours != null ? d.targetHours : 180;
+
+  document.getElementById('w-rate-input').value = rate;
+  document.getElementById('w-std-hours').value = stdH;
+  document.getElementById('w-target-hours').value = targetH;
+
+}
+
+function wKey(y,m,day){ return y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0'); }
+
+function renderWCal(){
+  document.getElementById('w-month-title').textContent = W_MONTHS[wMonth]+' '+wYear;
+  const d = getWData();
+  const rate = d.rate != null ? d.rate : 31;
+  const stdH = d.stdHours != null ? d.stdHours : 8;
+  const days = d.days||{};
+
+  // Day names
+  const namesEl = document.getElementById('w-day-names');
+  namesEl.innerHTML = W_DAYS.map(n=>`<div class="day-name-w">${n}</div>`).join('');
+
+  const firstDay = new Date(wYear, wMonth, 1).getDay();
+  const offset = firstDay===0 ? 6 : firstDay-1;
+  const daysInMonth = new Date(wYear, wMonth+1, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  const grid = document.getElementById('w-cal-grid');
+  let html = '';
+  for(let i=0;i<offset;i++) html += '<div class="day-cell empty"></div>';
+
+  let plannedDays=0, workedDays=0, plannedHours=0, workedHours=0, earnedTotal=0;
+
+  for(let day=1;day<=daysInMonth;day++){
+    const key = wKey(wYear,wMonth,day);
+    const date = new Date(wYear,wMonth,day);
+    const dow = date.getDay(); // 0=sun, 6=sat
+    const isWeekend = dow===0||dow===6;
+    const isPast = key<todayStr;
+    const isToday = key===todayStr;
+    const dayData = days[key];
+
+    let cls = 'day-cell';
+    if(isToday) cls += ' today-w';
+    let hoursLabel = '';
+    let hours = 0;
+
+    if(dayData){
+      if(dayData.type==='work'){
+        hours = dayData.hours||stdH;
+        cls += isPast||isToday ? ' past-work' : ' workday';
+        workedDays++;
+        workedHours+=hours;
+        earnedTotal+=hours*rate;
+        hoursLabel = hours!==stdH ? `<span class="hours-badge">${hours}</span>` : '';
+      } else if(dayData.type==='extra'){
+        hours = dayData.hours||stdH;
+        cls += isPast||isToday ? ' past-extra' : ' extra';
+        workedDays++;
+        workedHours+=hours;
+        earnedTotal+=hours*rate;
+        hoursLabel = `<span class="hours-badge">${hours}</span>`;
+      } else if(dayData.type==='off'){
+        cls += ' off';
+      }
+    } else if(!isWeekend){
+      // Default: planned workday
+      if(!isPast){
+        cls += ' workday';
+        plannedDays++;
+        plannedHours+=stdH;
+      }
+    } else {
+      cls += ' weekend';
+    }
+
+    html += `<div class="${cls}" onclick="wDayClick('${key}',${day})">${day}${hoursLabel}</div>`;
+  }
+  grid.innerHTML = html;
+
+  // Totals
+  const targetHours = d.targetHours != null ? d.targetHours : 180;
+  const extraRate = rate; // та же ставка
+  const remainHours = Math.max(0, targetHours - workedHours);
+  const totalPlannedEarn = earnedTotal + plannedHours*rate;
+  const totalDays = workedDays + plannedDays;
+
+  // Сверхурочные
+  let overtimeHours = 0, overtimeEarn = 0;
+  Object.values(days).forEach(day => {
+    if(day.type==='extra') {
+      const h = day.hours||(d.stdHours != null ? d.stdHours : 8);
+      overtimeHours += h;
+      overtimeEarn += h * extraRate;
+    }
+  });
+  const overtimeBonus = 0;
+
+  document.getElementById('w-earned').textContent = Math.round(earnedTotal).toLocaleString('ru') + ' zł';
+  document.getElementById('w-earned-sub').textContent = workedHours >= targetHours
+    ? '✅ Цель по часам выполнена!'
+    : 'заработано этот месяц';
+  document.getElementById('w-hours-done').textContent = workedHours + 'ч';
+  document.getElementById('w-hours-plan').textContent = remainHours + 'ч';
+  document.getElementById('w-days-done').textContent = workedDays;
+  document.getElementById('w-days-plan').textContent = plannedDays;
+  document.getElementById('w-rate-show').textContent = rate + ' zł/ч';
+
+  document.getElementById('w-target-money').textContent = Math.round(targetHours*rate).toLocaleString('ru') + ' zł';
+  document.getElementById('w-target-hours-show').textContent = targetHours + 'ч';
+
+  // Прогресс часов
+  const hoursPct = targetHours>0 ? Math.min(100, Math.round(workedHours/targetHours*100)) : 0;
+  document.getElementById('w-progress-fill').style.width = hoursPct+'%';
+  document.getElementById('w-progress-pct').textContent = hoursPct+'%';
+
+  // Прогресс денег
+  const targetMoney = targetHours * rate;
+  const moneyPct = targetMoney>0 ? Math.min(100, Math.round(earnedTotal/targetMoney*100)) : 0;
+  document.getElementById('w-money-fill').style.width = moneyPct+'%';
+  document.getElementById('w-money-pct').textContent = moneyPct+'%';
+
+  // Сверхурочные блок
+  const otBlock = document.getElementById('w-overtime-block');
+  if(overtimeHours > 0) {
+    otBlock.style.display = 'block';
+    document.getElementById('w-overtime-hours').textContent = overtimeHours + 'ч';
+    document.getElementById('w-overtime-earn').textContent = Math.round(overtimeEarn).toLocaleString('ru') + ' zł';
+
+  } else {
+    otBlock.style.display = 'none';
+  }
+
+  // Forecast
+  const forecastEl = document.getElementById('w-forecast');
+  const projectedTotal = earnedTotal + plannedHours * rate;
+  const projectedHours = workedHours + plannedHours;
+  const hoursShortfall = Math.max(0, targetHours - projectedHours);
+  if(plannedDays===0){
+    forecastEl.innerHTML = '<div style="font-size:13px;color:var(--text3);">Все дни месяца уже отмечены.</div>';
+  } else {
+    forecastEl.innerHTML = `
+      <div style="font-size:13px;color:var(--text2);line-height:2;">
+        Осталось дней: <b>${plannedDays}</b> · Часов: <b>${plannedHours}ч</b><br>
+        Заработаешь ещё: <b style="color:var(--green);">${Math.round(plannedHours*rate).toLocaleString('ru')} zł</b><br>
+        Итого за месяц: <b style="color:var(--green);font-size:15px;">${Math.round(projectedTotal).toLocaleString('ru')} zł</b><br>
+        ${hoursShortfall>0
+          ? `<span style="color:var(--oranged);">⚠ Не хватает ${hoursShortfall}ч до цели (${targetHours}ч)</span>`
+          : `<span style="color:var(--green);">✅ Цель по часам будет выполнена</span>`
+        }
+      </div>
+    `;
+  }
+}
+
+function wDayClick(key, day){
+  wSelectedDay = key;
+  const d = getWData();
+  const dayData = (d.days||{})[key];
+  const date = new Date(wYear, wMonth, day);
+  const dow = date.getDay();
+  const dayNames = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  document.getElementById('w-popup-title').textContent = dayNames[dow]+', '+day+' '+W_MONTHS[wMonth];
+
+  const typeEl = document.getElementById('w-day-type');
+  const hoursEl = document.getElementById('w-day-hours');
+  const stdH = d.stdHours != null ? d.stdHours : 8;
+
+  if(dayData){
+    typeEl.value = dayData.type||'work';
+    hoursEl.value = dayData.hours||stdH;
+  } else {
+    // defaults
+    if(dow===0||dow===6) typeEl.value='off';
+    else typeEl.value='work';
+    hoursEl.value = stdH;
+  }
+  wDayTypeChange();
+  document.getElementById('w-day-popup').style.display='block';
+  document.getElementById('w-day-popup').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function wDayTypeChange(){
+  const type = document.getElementById('w-day-type').value;
+  document.getElementById('w-hours-wrap').style.display = type==='off' ? 'none' : 'block';
+}
+
+function saveWDay(){
+  if(!wSelectedDay) return;
+  const d = getWData();
+  if(!d.days) d.days={};
+  const type = document.getElementById('w-day-type').value;
+  const hours = parseFloat(document.getElementById('w-day-hours').value)||d.stdHours != null ? d.stdHours : 8;
+  if(type==='off'){
+    d.days[wSelectedDay]={type:'off'};
+  } else {
+    d.days[wSelectedDay]={type,hours};
+  }
+  saveWData(d);
+  document.getElementById('w-day-popup').style.display='none';
+  renderWCal();
+}
+
+// Init work tracker when switching to it
+function initWorkTracker(){
+  // Первый запуск — записать дефолты если их нет
+  const d = getWData();
+  if(d.rate == null) d.rate = 31;
+  if(d.stdHours == null) d.stdHours = 8;
+  if(d.targetHours == null) d.targetHours = 180;
+
+  saveWData(d);
+  loadWSettings();
+  renderWCal();
+}
+
+
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
+</script>
+
+<div id="page-work" style="display:none;">
+<div style="padding:16px;max-width:520px;margin:0 auto;">
+
+  <div class="month-nav">
+    <button class="mnav-btn" onclick="wCalPrev()">‹</button>
+    <div class="month-title-w" id="w-month-title"></div>
+    <button class="mnav-btn" onclick="wCalNext()">›</button>
+  </div>
+
+  <!-- MONEY SUMMARY -->
+  <div class="work-card">
+    <div class="money-big" id="w-earned">0 zł</div>
+    <div class="money-sub" id="w-earned-sub">заработано этот месяц</div>
+
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-val" id="w-hours-done">0ч</div><div class="stat-lbl">Отработано</div></div>
+      <div class="stat-box"><div class="stat-val" id="w-hours-plan">0ч</div><div class="stat-lbl">Осталось часов</div></div>
+      <div class="stat-box"><div class="stat-val" id="w-days-done">0</div><div class="stat-lbl">Дней отработано</div></div>
+      <div class="stat-box"><div class="stat-val" id="w-days-plan">0</div><div class="stat-lbl">Дней осталось</div></div>
+    </div>
+
+    <!-- ПРОГРЕСС ЧАСОВ -->
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Прогресс по часам</div>
+    <div class="progress-month"><div class="progress-month-fill" id="w-progress-fill" style="width:0%"></div></div>
+    <div class="target-row">
+      <span id="w-progress-pct">0%</span>
+      <span>Цель: <b id="w-target-hours-show">180ч</b></span>
+    </div>
+
+    <!-- ПРОГРЕСС ПО ДЕНЬГАМ -->
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;margin-top:10px;">Прогресс по деньгам</div>
+    <div class="progress-month"><div class="progress-month-fill" id="w-money-fill" style="width:0%;background:linear-gradient(90deg,#e07d1a,#f0a830);"></div></div>
+    <div class="target-row">
+      <span id="w-money-pct">0%</span>
+      <span>Цель: <b id="w-target-money">0 zł</b></span>
+    </div>
+
+    <!-- СВЕРХУРОЧНЫЕ -->
+    <div id="w-overtime-block" style="display:none;margin-top:12px;background:var(--orangel);border-radius:11px;padding:10px 12px;">
+      <div style="font-size:12px;font-weight:700;color:var(--oranged);margin-bottom:6px;">Сверхурочные</div>
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:18px;font-weight:700;color:var(--oranged);" id="w-overtime-hours">0ч</div>
+          <div style="font-size:10px;color:var(--oranged);opacity:.8;">часов</div>
+        </div>
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:18px;font-weight:700;color:var(--oranged);" id="w-overtime-earn">0 zł</div>
+          <div style="font-size:10px;color:var(--oranged);opacity:.8;">заработано</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:var(--text3);margin-top:10px;">
+      Ставка: <b id="w-rate-show">31 zł/ч</b> &nbsp;·&nbsp; Сверхурочные по той же ставке
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="work-card">
+    <div class="work-title">Настройки</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div class="form-group">
+        <label>Ставка в час (zł)</label>
+        <input type="number" id="w-rate-input" value="31" inputmode="decimal" onchange="saveWSettings()">
+      </div>
+      <div class="form-group">
+        <label>Часов в день</label>
+        <input type="number" id="w-std-hours" value="8" inputmode="numeric" onchange="saveWSettings()">
+      </div>
+      <div class="form-group">
+        <label>Цель часов в месяц</label>
+        <input type="number" id="w-target-hours" value="180" inputmode="numeric" onchange="saveWSettings()">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="work-card">
+    <div class="work-title">Календарь — нажми на день</div>
+    <div class="work-legend">
+      <div class="wleg"><div class="wleg-dot" style="background:var(--green);"></div>Отработан</div>
+      <div class="wleg"><div class="wleg-dot" style="background:#e07d1a;"></div>Сверхурочно</div>
+      <div class="wleg"><div class="wleg-dot" style="background:var(--greenl);border:1px solid var(--green);"></div>Запланирован</div>
+      <div class="wleg"><div class="wleg-dot" style="background:var(--bg3);"></div>Выходной</div>
+    </div>
+    <div class="day-grid" id="w-day-names"></div>
+    <div class="day-grid" id="w-cal-grid"></div>
+  </div>
+
+  <!-- DAY EDITOR -->
+  <div class="day-popup" id="w-day-popup" style="display:none;">
+    <div class="day-popup-title" id="w-popup-title">Редактировать день</div>
+    <div class="form-group">
+      <label>Тип дня</label>
+      <select id="w-day-type" onchange="wDayTypeChange()">
+        <option value="work">Рабочий день</option>
+        <option value="extra">Сверхурочный (Сб или доп. часы)</option>
+        <option value="off">Выходной / не работаю</option>
+      </select>
+    </div>
+    <div id="w-hours-wrap" class="form-group">
+      <label>Часов отработано / запланировано</label>
+      <input type="number" id="w-day-hours" placeholder="8" inputmode="decimal">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-green" style="flex:1;" onclick="saveWDay()">Сохранить</button>
+      <button class="btn btn-gray" style="flex:1;" onclick="document.getElementById('w-day-popup').style.display='none'">Отмена</button>
+    </div>
+  </div>
+
+  <!-- FORECAST -->
+  <div class="work-card">
+    <div class="work-title">Прогноз до конца месяца</div>
+    <div id="w-forecast"></div>
+  </div>
+
+  <div style="height:16px;"></div>
+</div>
+</div>
+</body>
+</html>
