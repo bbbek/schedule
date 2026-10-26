@@ -526,7 +526,7 @@ body.edit-mode .add-row{display:block;}
 .star-btn.on{background:var(--warn-bg);border-color:#e0a020;}
 
 /* календарь: сводка */
-.cal-summary{display:flex;gap:8px;margin-bottom:12px;}
+.cal-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
 .cal-summary .sbox{flex:1;background:var(--bg3);border-radius:12px;padding:10px 12px;}
 .cal-summary .sv{font-size:18px;font-weight:700;color:var(--text);}
 .cal-summary .sl{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-top:2px;}
@@ -934,11 +934,16 @@ body.edit-mode .add-row{display:block;}
 
 <script>
 // ─── Telegram init ───
-if (window.Telegram && window.Telegram.WebApp) {
-  const tg = window.Telegram.WebApp;
-  tg.ready();
-  tg.expand();
+const TG = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) ? window.Telegram.WebApp : null;
+if (TG) {
+  try {
+    TG.ready(); TG.expand();
+    // Свайп вниз по списку не должен закрывать мини-приложение.
+    if (TG.disableVerticalSwipes) TG.disableVerticalSwipes();
+    if (TG.BackButton) TG.BackButton.onClick(() => swView('schedule', document.querySelector('.itab')));
+  } catch (e) {}
 }
+function haptic(kind) { try { if (TG && TG.HapticFeedback) TG.HapticFeedback.impactOccurred(kind || 'light'); else if (navigator.vibrate) navigator.vibrate(8); } catch (e) {} }
 
 // ─── State ───
 let currentShift = 's1';
@@ -977,6 +982,7 @@ function toggle(el, key) {
   if (!data[tk]) data[tk] = { checked: {}, total: 0, done: 0 };
   data[tk].checked[key] = isDone;
   saveStorage(data);
+  if (isDone) haptic();
   updateProgress();
 }
 
@@ -1065,6 +1071,7 @@ function swView(id, btn) {
   if (btn) { btn.classList.add('on'); btn.classList.remove('off'); }
   if (id === 'calendar') renderCal();
   if (id === 'settings' && typeof fillSettings === 'function') fillSettings();
+  if (TG && TG.BackButton) { try { id === 'settings' ? TG.BackButton.show() : TG.BackButton.hide(); } catch (e) {} }
   window.scrollTo({top: 0});
 }
 
@@ -1339,28 +1346,42 @@ async function getPrayerTimes() {
   const sig = [s.city, s.country, s.method, s.school].join('|');
   let cache = lsGet('sched_prayer_cache', {}) || {};
   if (cache.sig !== sig) cache = {sig: sig, days: {}};
-  if (cache.days[dk]) return {t: cache.days[dk], stale: false, from: dk};
+  // Ближе к концу месяца заранее подгружаем следующий, чтобы без интернета время было точным.
+  if (cache.days[dk]) {
+    if (d.getDate() >= 20) { const nx = new Date(d.getFullYear(), d.getMonth() + 1, 1); if (!cache.days[dateKey(nx)]) fetchMonth(s, nx, cache).catch(() => {}); }
+    return {t: cache.days[dk], stale: false, from: dk};
+  }
   try {
-    const ctl = new AbortController();
-    const to = setTimeout(() => ctl.abort(), 8000);
-    const url = 'https://api.aladhan.com/v1/timingsByCity/' + pad(d.getDate()) + '-' + pad(d.getMonth()+1) + '-' + d.getFullYear()
-      + '?city=' + encodeURIComponent(s.city) + '&country=' + encodeURIComponent(s.country)
-      + '&method=' + s.method + '&school=' + s.school;
-    const r = await fetch(url, {signal: ctl.signal});
-    clearTimeout(to);
-    const j = await r.json();
-    if (j.code !== 200) throw new Error('bad');
-    const tm = j.data.timings;
-    const t = {fajr: tm.Fajr.slice(0,5), sunrise: tm.Sunrise.slice(0,5), dhuhr: tm.Dhuhr.slice(0,5), asr: tm.Asr.slice(0,5), maghrib: tm.Maghrib.slice(0,5), isha: tm.Isha.slice(0,5)};
-    cache.days[dk] = t;
-    Object.keys(cache.days).sort().slice(0, -10).forEach(k => delete cache.days[k]);
-    lsSet('sched_prayer_cache', cache);
-    return {t: t, stale: false, from: dk};
+    await fetchMonth(s, d, cache);
+    if (!cache.days[dk]) throw new Error('no day');
+    return {t: cache.days[dk], stale: false, from: dk};
   } catch (e) {
-    const keys = Object.keys(cache.days).sort();
-    if (keys.length) return {t: cache.days[keys[keys.length - 1]], stale: true, from: keys[keys.length - 1]};
+    // Нет сети и нет сегодняшнего дня: берём ближайший сохранённый день до сегодня.
+    const keys = Object.keys(cache.days).sort(), prev = keys.filter(k => k <= dk);
+    const k = prev.length ? prev[prev.length - 1] : keys[0];
+    if (k) return {t: cache.days[k], stale: true, from: k};
     return null;
   }
+}
+
+// Один запрос — время на весь месяц (вместо одного дня).
+async function fetchMonth(s, d, cache) {
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const url = 'https://api.aladhan.com/v1/calendarByCity/' + d.getFullYear() + '/' + (d.getMonth() + 1)
+      + '?city=' + encodeURIComponent(s.city) + '&country=' + encodeURIComponent(s.country)
+      + '&method=' + s.method + '&school=' + s.school;
+    const j = await (await fetch(url, {signal: ctl.signal})).json();
+    if (j.code !== 200 || !Array.isArray(j.data)) throw new Error('bad');
+    j.data.forEach(x => {
+      const g = x.date.gregorian.date.split('-'), tm = x.timings; // DD-MM-YYYY
+      cache.days[g[2] + '-' + g[1] + '-' + g[0]] = {fajr: tm.Fajr.slice(0,5), sunrise: tm.Sunrise.slice(0,5), dhuhr: tm.Dhuhr.slice(0,5), asr: tm.Asr.slice(0,5), maghrib: tm.Maghrib.slice(0,5), isha: tm.Isha.slice(0,5)};
+    });
+    // Храним не больше двух месяцев.
+    Object.keys(cache.days).sort().slice(0, -62).forEach(k => delete cache.days[k]);
+    lsSet('sched_prayer_cache', cache);
+  } finally { clearTimeout(to); }
 }
 
 function entries() {
@@ -1497,7 +1518,10 @@ function renderCalSummary() {
   const good = k => data[k] && data[k].total > 0 && data[k].done / data[k].total >= 0.8;
   if (!good(dateKey(d))) d.setDate(d.getDate() - 1);
   while (good(dateKey(d))) { streak++; d.setDate(d.getDate() - 1); }
+  let prayed = 0, prayDays = 0;
+  days.forEach(k => { const ch = data[k].checked || {}; if (Object.keys(ch).some(x => x.indexOf('pray-') === 0)) { prayDays++; PRAY.forEach(p => { if (ch['pray-' + p.k]) prayed++; }); } });
   el.innerHTML = '<div class="sbox"><div class="sv">' + streak + '</div><div class="sl">серия дней ≥80%</div></div>'
+    + (prayDays ? '<div class="sbox"><div class="sv">' + Math.round(prayed / (prayDays * 5) * 100) + '%</div><div class="sl">намазов отмечено</div></div>' : '')
     + '<div class="sbox"><div class="sv">' + avg + '%</div><div class="sl">среднее за месяц</div></div>'
     + '<div class="sbox"><div class="sv">' + days.length + '</div><div class="sl">дней с данными</div></div>';
 }

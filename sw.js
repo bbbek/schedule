@@ -1,6 +1,6 @@
 // Офлайн: сначала сеть, при отсутствии интернета — последняя сохранённая версия.
-const CACHE = 'schedule-v3';
-const FILES = ['./', './index.html', './constructor.html', './manifest.json', './manifest-constructor.json', './icon.svg'];
+const CACHE = 'schedule-v4';
+const FILES = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(f).catch(() => {})))).then(() => self.skipWaiting()));
